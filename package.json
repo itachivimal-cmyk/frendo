@@ -1,26 +1,16 @@
 {
-  "name": "new-folder",
+  "name": "frendo-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Anonymous Chat App",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/itachivimal-cmyk/frendo.git"
-  },
-  "bugs": {
-    "url": "https://github.com/itachivimal-cmyk/frendo/issues"
-  },
-  "homepage": "https://github.com/itachivimal-cmyk/frendo#readme"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
