@@ -10,8 +10,12 @@ const PORT = process.env.PORT || 3000;
 
 let liveLogs = [];
 let waitingQueue = [];
+let activeUsersCount = 0;
 
 io.on('connection', (socket) => {
+  activeUsersCount++;
+  io.emit('update_online_count', activeUsersCount);
+
   const clientIP = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
 
   socket.on('find_partner', (data) => {
@@ -78,6 +82,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    activeUsersCount = Math.max(0, activeUsersCount - 1);
+    io.emit('update_online_count', activeUsersCount);
+
     waitingQueue = waitingQueue.filter((s) => s.id !== socket.id);
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('stranger_left');
@@ -114,11 +121,9 @@ app.get('/admin-logs-secret', (req, res) => {
         .stats-grid { display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; }
         .card { background: #111827; padding: 18px 25px; border-radius: 12px; border: 1px solid #374151; text-align: center; flex: 1; max-width: 200px; }
         .card h4 { margin: 0 0 6px 0; color: #9CA3AF; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .card p { margin: 0; font-size: 26px; font-weight: bold; color: #2563EB; }
-        
+        .card p { margin: 0; font-size: 26px; font-weight: bold; color: #10B981; }
         .action-container { text-align: right; margin-bottom: 15px; }
         .btn-clear { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 13px; display: inline-block; }
-
         table { width: 100%; border-collapse: collapse; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid #1F2937; }
         th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #1F2937; font-size: 14px; }
         th { background: #1F2937; color: #D4AF37; font-size: 13px; text-transform: uppercase; }
@@ -132,7 +137,8 @@ app.get('/admin-logs-secret', (req, res) => {
       <div class="container">
         <h2>📊 Frendo Live Monitor Dashboard</h2>
         <div class="stats-grid">
-          <div class="card"><h4>Total Connections</h4><p>${liveLogs.length}</p></div>
+          <div class="card"><h4>Active Online</h4><p>${activeUsersCount}</p></div>
+          <div class="card"><h4>Total Logs</h4><p>${liveLogs.length}</p></div>
           <div class="card"><h4>Waiting Queue</h4><p>${waitingQueue.length}</p></div>
         </div>
         <div class="action-container">
@@ -165,11 +171,105 @@ app.get('/', (req, res) => {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
         body.ceo-mode { background-color: #0D0B08; }
-        
+
+        /* APP LANDING PAGE SCREEN */
+        .app-landing {
+          width: 100vw;
+          height: 100dvh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          padding: 40px 20px;
+          background: radial-gradient(circle at top, #1E1B4B 0%, #0B0F19 80%);
+          text-align: center;
+          position: absolute;
+          top: 0;
+          left: 0;
+          z-index: 10;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .app-landing.hide { transform: translateY(-100%); }
+
+        /* YELLOW/PINK ROUND LOGO WITH BLINK TEXT */
+        .logo-circle {
+          width: 130px;
+          height: 130px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #FACC15, #EC4899);
+          padding: 5px;
+          box-shadow: 0 0 35px rgba(236, 72, 153, 0.5), 0 0 15px rgba(250, 204, 21, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 20px;
+        }
+        .logo-inner {
+          width: 100%;
+          height: 100%;
+          background: #0B0F19;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .logo-text {
+          font-size: 22px;
+          font-weight: 900;
+          letter-spacing: 2px;
+          background: linear-gradient(135deg, #FACC15, #EC4899);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: blinkText 1.8s infinite alternate;
+        }
+        @keyframes blinkText {
+          0% { opacity: 0.6; transform: scale(0.96); }
+          100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        .app-title-section h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+        .app-title-section p { font-size: 14px; color: #9CA3AF; max-width: 300px; margin: 0 auto; line-height: 1.5; }
+
+        .details-box {
+          background: rgba(17, 24, 39, 0.7);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+          padding: 20px;
+          width: 100%;
+          max-width: 340px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .detail-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #D1D5DB; }
+        .detail-item span.val { font-weight: bold; color: #10B981; }
+
+        /* TEXT TAP BUTTON TO CHAT */
+        .btn-text-tab {
+          width: 100%;
+          max-width: 340px;
+          background: linear-gradient(135deg, #2563EB, #1D4ED8);
+          color: #fff;
+          border: none;
+          padding: 16px;
+          border-radius: 16px;
+          font-size: 18px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: transform 0.2s;
+        }
+        .btn-text-tab:active { transform: scale(0.97); }
+
+        /* CHAT CARD MAIN */
         .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; transition: transform 0.2s ease; }
         body.ceo-mode .chat-card { background: #0D0B08; }
 
-        /* RICH ANIMATED TOAST NOTIFICATION */
         .toast-notify {
           position: fixed;
           top: -60px;
@@ -192,7 +292,6 @@ app.get('/', (req, res) => {
         }
         .toast-notify.show { top: 20px; }
 
-        /* SHAKE ANIMATION WHEN DISCONNECTED */
         @keyframes shakeAlert {
           0% { transform: translateX(0); }
           20% { transform: translateX(-8px); }
@@ -204,9 +303,37 @@ app.get('/', (req, res) => {
         .shake { animation: shakeAlert 0.4s ease-in-out; }
 
         .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .header h3 { font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .header h3 { font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px; }
         body.ceo-mode .header h3 { color: #D4AF37; }
         
+        .btn-back { background: #1F2937; border: 1px solid #374151; color: #9CA3AF; padding: 5px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; margin-right: 6px; }
+
+        .online-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(16, 185, 129, 0.15);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 12px;
+          color: #10B981;
+          font-weight: bold;
+        }
+        .pulse-dot {
+          width: 8px;
+          height: 8px;
+          background-color: #10B981;
+          border-radius: 50%;
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+          animation: pulse 1.6s infinite;
+        }
+        @keyframes pulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
         .header-actions { display: flex; gap: 8px; }
         .btn-sm { border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-report { background: #374151; color: #f87171; }
@@ -247,20 +374,64 @@ app.get('/', (req, res) => {
     </head>
     <body id="bodyNode">
 
-      <!-- RICH ANIMATED TOAST NOTIFICATION -->
+      <!-- APP HOMEPAGE INTERFACE -->
+      <div id="landingScreen" class="app-landing">
+        <div>
+          <div class="logo-circle">
+            <div class="logo-inner">
+              <span class="logo-text">FRENDO</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-title-section">
+          <h1>Welcome to Frendo</h1>
+          <p>Connect with random strangers anonymously. Safe, fast & private audio/text chat.</p>
+        </div>
+
+        <div class="details-box">
+          <div class="detail-item">
+            <span>Server Status</span>
+            <span class="val" style="color: #10B981;">🟢 Online</span>
+          </div>
+          <div class="detail-item">
+            <span>Active Users</span>
+            <span class="val" id="landingOnlineCount">0 Online</span>
+          </div>
+          <div class="detail-item">
+            <span>Privacy</span>
+            <span style="color: #60A5FA;">100% Anonymous</span>
+          </div>
+        </div>
+
+        <button class="btn-text-tab" onclick="openChatScreen()">
+          💬 TEXT CHAT
+        </button>
+      </div>
+
       <div id="toast" class="toast-notify">
         <span>🚫</span> <span id="toastMsg">Stranger disconnected</span>
       </div>
 
+      <!-- MAIN CHAT INTERFACE -->
       <div class="chat-card" id="chatCard">
         <div class="header">
-          <div>
-            <h3 id="panelTitle"><img src="https://cdn-icons-png.flaticon.com/512/3820/3820107.png" width="22" height="22"> Frendo Chat</h3>
-            <span id="statusText" style="font-size: 12px; color: #9CA3AF;">Offline</span>
+          <div style="display: flex; align-items: center;">
+            <button class="btn-back" onclick="closeChatScreen()">⬅ Back</button>
+            <div>
+              <h3 id="panelTitle"><img src="https://cdn-icons-png.flaticon.com/512/3820/3820107.png" width="20" height="20"> Frendo</h3>
+              <span id="statusText" style="font-size: 11px; color: #9CA3AF;">Offline</span>
+            </div>
           </div>
+
+          <div class="online-badge">
+            <span class="pulse-dot"></span>
+            <span id="onlineCountText">0 Online</span>
+          </div>
+
           <div class="header-actions" id="headerActions" style="display: none;">
-            <button class="btn-sm btn-report" onclick="handleReport()">🚩 Report</button>
-            <button class="btn-sm btn-block" onclick="handleBlock()">🚫 Block</button>
+            <button class="btn-sm btn-report" onclick="handleReport()">🚩</button>
+            <button class="btn-sm btn-block" onclick="handleBlock()">🚫</button>
           </div>
         </div>
 
@@ -291,12 +462,15 @@ app.get('/', (req, res) => {
         let audioChunks = [];
         let isRecording = false;
 
+        const landingScreen = document.getElementById('landingScreen');
+        const landingOnlineCount = document.getElementById('landingOnlineCount');
         const bodyNode = document.getElementById('bodyNode');
         const chatCard = document.getElementById('chatCard');
         const toast = document.getElementById('toast');
         const toastMsg = document.getElementById('toastMsg');
         const panelTitle = document.getElementById('panelTitle');
         const statusText = document.getElementById('statusText');
+        const onlineCountText = document.getElementById('onlineCountText');
         const headerActions = document.getElementById('headerActions');
         const startBtn = document.getElementById('startBtn');
         const skipBtn = document.getElementById('skipBtn');
@@ -306,6 +480,20 @@ app.get('/', (req, res) => {
         const sendBtn = document.getElementById('sendBtn');
         const micBtn = document.getElementById('micBtn');
         const typingIndicator = document.getElementById('typingIndicator');
+
+        function openChatScreen() {
+          landingScreen.classList.add('hide');
+        }
+
+        function closeChatScreen() {
+          if(isConnected) handleEndChat();
+          landingScreen.classList.remove('hide');
+        }
+
+        socket.on('update_online_count', (count) => {
+          onlineCountText.innerText = count + ' Online';
+          landingOnlineCount.innerText = count + ' Online';
+        });
 
         function showToast(text) {
           toastMsg.innerText = text;
@@ -323,12 +511,12 @@ app.get('/', (req, res) => {
 
         if (isCEO) {
           bodyNode.classList.add('ceo-mode');
-          panelTitle.innerHTML = '👑 CEO DOMINANT PANEL';
+          panelTitle.innerHTML = '👑 CEO DOMINANT';
         }
 
         function handleConnect() {
           socket.emit('find_partner', { isCEO });
-          statusText.innerText = 'Searching for partner...';
+          statusText.innerText = 'Searching...';
           startBtn.style.display = 'none';
           skipBtn.style.display = 'inline-block';
           endBtn.style.display = 'inline-block';
@@ -394,7 +582,7 @@ app.get('/', (req, res) => {
 
         socket.on('chat_start', (data) => {
           isConnected = true;
-          statusText.innerText = 'Connected to Stranger';
+          statusText.innerText = 'Connected';
           headerActions.style.display = 'flex';
           msgInput.disabled = false;
           sendBtn.disabled = false;
