@@ -98,14 +98,19 @@ app.get('/admin-clear-logs-secret', (req, res) => {
 });
 
 app.get('/admin-logs-secret', (req, res) => {
-  let tableRows = liveLogs.map((user, index) => `
-    <tr>
-      <td>#${liveLogs.length - index}</td>
-      <td><code>${user.ip}</code></td>
-      <td>${user.isCEO ? '<span class="badge ceo">👑 CEO</span>' : '<span class="badge user">Stranger User</span>'}</td>
-      <td>${user.connectedAt}</td>
-    </tr>
-  `).join('');
+  let tableRows = '';
+  if (liveLogs.length > 0) {
+    tableRows = liveLogs.map((user, index) => {
+      return '<tr>' +
+        '<td>#' + (liveLogs.length - index) + '</td>' +
+        '<td><code>' + user.ip + '</code></td>' +
+        '<td>' + (user.isCEO ? '<span class="badge ceo">👑 CEO</span>' : '<span class="badge user">Stranger User</span>') + '</td>' +
+        '<td>' + user.connectedAt + '</td>' +
+      '</tr>';
+    }).join('');
+  } else {
+    tableRows = '<tr><td colspan="4" style="text-align:center; color:#9CA3AF;">No active connections logged yet</td></tr>';
+  }
 
   res.send(`
     <!DOCTYPE html>
@@ -149,7 +154,7 @@ app.get('/admin-logs-secret', (req, res) => {
             <tr><th>ID</th><th>IP Address</th><th>Role</th><th>Connected Time</th></tr>
           </thead>
           <tbody>
-            ${tableRows.length ? tableRows : '<tr><td colspan="4" style="text-align:center; color:#9CA3AF;">No active connections logged yet</td></tr>'}
+            ${tableRows}
           </tbody>
         </table>
       </div>
@@ -172,7 +177,6 @@ app.get('/', (req, res) => {
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
         body.ceo-mode { background-color: #0D0B08; }
 
-        /* APP LANDING PAGE SCREEN */
         .app-landing {
           width: 100vw;
           height: 100dvh;
@@ -191,7 +195,6 @@ app.get('/', (req, res) => {
         }
         .app-landing.hide { transform: translateY(-100%); }
 
-        /* YELLOW/PINK ROUND LOGO WITH BLINK TEXT */
         .logo-circle {
           width: 130px;
           height: 130px;
@@ -245,7 +248,6 @@ app.get('/', (req, res) => {
         .detail-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #D1D5DB; }
         .detail-item span.val { font-weight: bold; color: #10B981; }
 
-        /* TEXT TAP BUTTON TO CHAT */
         .btn-text-tab {
           width: 100%;
           max-width: 340px;
@@ -266,7 +268,6 @@ app.get('/', (req, res) => {
         }
         .btn-text-tab:active { transform: scale(0.97); }
 
-        /* CHAT CARD MAIN */
         .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; transition: transform 0.2s ease; }
         body.ceo-mode .chat-card { background: #0D0B08; }
 
@@ -374,7 +375,6 @@ app.get('/', (req, res) => {
     </head>
     <body id="bodyNode">
 
-      <!-- APP HOMEPAGE INTERFACE -->
       <div id="landingScreen" class="app-landing">
         <div>
           <div class="logo-circle">
@@ -413,7 +413,6 @@ app.get('/', (req, res) => {
         <span>🚫</span> <span id="toastMsg">Stranger disconnected</span>
       </div>
 
-      <!-- MAIN CHAT INTERFACE -->
       <div class="chat-card" id="chatCard">
         <div class="header">
           <div style="display: flex; align-items: center;">
