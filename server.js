@@ -85,6 +85,12 @@ io.on('connection', (socket) => {
   });
 });
 
+// ROUTE TO CLEAR LOGS
+app.get('/admin-clear-logs-secret', (req, res) => {
+  liveLogs = [];
+  res.redirect('/admin-logs-secret');
+});
+
 // CLEAN & PROFESSIONAL ADMIN DASHBOARD
 app.get('/admin-logs-secret', (req, res) => {
   let tableRows = liveLogs.map((user, index) => `
@@ -107,10 +113,15 @@ app.get('/admin-logs-secret', (req, res) => {
         body { background: #0B0F19; color: #fff; padding: 25px 15px; margin: 0; }
         .container { max-width: 850px; margin: 0 auto; }
         h2 { color: #D4AF37; margin-bottom: 20px; text-align: center; font-size: 24px; }
-        .stats-grid { display: flex; gap: 15px; margin-bottom: 25px; justify-content: center; }
+        .stats-grid { display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; }
         .card { background: #111827; padding: 18px 25px; border-radius: 12px; border: 1px solid #374151; text-align: center; flex: 1; max-width: 200px; }
         .card h4 { margin: 0 0 6px 0; color: #9CA3AF; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
         .card p { margin: 0; font-size: 26px; font-weight: bold; color: #2563EB; }
+        
+        .action-container { text-align: right; margin-bottom: 15px; }
+        .btn-clear { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 13px; display: inline-block; }
+        .btn-clear:hover { background: #dc2626; }
+
         table { width: 100%; border-collapse: collapse; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid #1F2937; }
         th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #1F2937; font-size: 14px; }
         th { background: #1F2937; color: #D4AF37; font-size: 13px; text-transform: uppercase; }
@@ -123,10 +134,16 @@ app.get('/admin-logs-secret', (req, res) => {
     <body>
       <div class="container">
         <h2>📊 Frendo Live Monitor Dashboard</h2>
+        
         <div class="stats-grid">
           <div class="card"><h4>Total Connections</h4><p>${liveLogs.length}</p></div>
           <div class="card"><h4>Waiting Queue</h4><p>${waitingQueue.length}</p></div>
         </div>
+
+        <div class="action-container">
+          <a href="/admin-clear-logs-secret" class="btn-clear" onclick="return confirm('Logs ellam delete panlanuma bro?')">🗑️ Clear All Logs</a>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -267,7 +284,6 @@ app.get('/', (req, res) => {
         const micBtn = document.getElementById('micBtn');
         const typingIndicator = document.getElementById('typingIndicator');
 
-        // KEYBOARD SCROLL FIX
         msgInput.addEventListener('focus', () => {
           setTimeout(() => {
             msgInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
