@@ -8,6 +8,7 @@ const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 const PORT = process.env.PORT || 3000;
 
+// Live Users Log Store Panna Simple Memory Array
 let liveLogs = [];
 let waitingQueue = [];
 
@@ -17,6 +18,7 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     socket.isCEO = data?.isCEO || false;
 
+    // Live Log Save Aagum
     const userDetail = {
       ip: clientIP,
       isCEO: socket.isCEO,
@@ -85,6 +87,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// Admin Route to View Stranger Logs
 app.get('/admin-logs-secret', (req, res) => {
   res.json({
     totalUsersCount: liveLogs.length,
@@ -100,12 +103,23 @@ app.get('/', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <title>Anonymous Chat</title>
+      
+      <!-- SEO Meta Tags for Google Search Ranking -->
+      <title>Frendo - Anonymous Random Chat App</title>
+      <meta name="description" content="Talk to strangers online for free on Frendo! Safe, fast, and anonymous audio and text chat application.">
+      <meta name="keywords" content="Frendo, Frendo chat, random chat, talk to strangers, anonymous Tamil chat, Omegle alternative">
+      <meta name="robots" content="index, follow">
+      
+      <!-- Social Media Share Tags -->
+      <meta property="og:title" content="Frendo - Anonymous Chat App">
+      <meta property="og:description" content="Connect with random people instantly on Frendo. Free text and voice notes chat.">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://frendo-server.onrender.com">
+
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        html, body { height: 100%; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; position: relative; }
-        body { display: flex; justify-content: center; align-items: center; }
+        body { height: 100vh; width: 100vw; display: flex; justify-content: center; align-items: center; background-color: #0B0F19; color: #fff; overflow: hidden; position: relative; }
         
         body.ceo-mode { background-color: #0D0B08; }
         .ceo-glow { display: none; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); }
@@ -122,7 +136,7 @@ app.get('/', (req, res) => {
           100% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
         }
 
-        .chat-card { width: 95%; max-width: 420px; height: 90vh; max-height: 650px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
+        .chat-card { width: 90%; max-width: 420px; height: 85vh; max-height: 650px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
         body.ceo-mode .chat-card { border-color: #D4AF37; box-shadow: 0 0 35px rgba(212, 175, 55, 0.25); }
 
         .header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
@@ -216,7 +230,7 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
-        // Keyboard resize height lock
+        // Mobile Keyboard Viewport Resize Lock Fix
         if (window.visualViewport) {
           window.visualViewport.addEventListener('resize', () => {
             document.body.style.height = window.visualViewport.height + 'px';
