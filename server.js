@@ -85,13 +85,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// ROUTE TO CLEAR LOGS
 app.get('/admin-clear-logs-secret', (req, res) => {
   liveLogs = [];
   res.redirect('/admin-logs-secret');
 });
 
-// CLEAN & PROFESSIONAL ADMIN DASHBOARD
 app.get('/admin-logs-secret', (req, res) => {
   let tableRows = liveLogs.map((user, index) => `
     <tr>
@@ -120,7 +118,6 @@ app.get('/admin-logs-secret', (req, res) => {
         
         .action-container { text-align: right; margin-bottom: 15px; }
         .btn-clear { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 13px; display: inline-block; }
-        .btn-clear:hover { background: #dc2626; }
 
         table { width: 100%; border-collapse: collapse; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid #1F2937; }
         th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #1F2937; font-size: 14px; }
@@ -134,24 +131,16 @@ app.get('/admin-logs-secret', (req, res) => {
     <body>
       <div class="container">
         <h2>📊 Frendo Live Monitor Dashboard</h2>
-        
         <div class="stats-grid">
           <div class="card"><h4>Total Connections</h4><p>${liveLogs.length}</p></div>
           <div class="card"><h4>Waiting Queue</h4><p>${waitingQueue.length}</p></div>
         </div>
-
         <div class="action-container">
-          <a href="/admin-clear-logs-secret" class="btn-clear" onclick="return confirm('Logs ellam delete panlanuma bro?')">🗑️ Clear All Logs</a>
+          <a href="/admin-clear-logs-secret" class="btn-clear" onclick="return confirm('Clear logs?')">🗑️ Clear All Logs</a>
         </div>
-
         <table>
           <thead>
-            <tr>
-              <th>ID</th>
-              <th>IP Address</th>
-              <th>Role</th>
-              <th>Connected Time</th>
-            </tr>
+            <tr><th>ID</th><th>IP Address</th><th>Role</th><th>Connected Time</th></tr>
           </thead>
           <tbody>
             ${tableRows.length ? tableRows : '<tr><td colspan="4" style="text-align:center; color:#9CA3AF;">No active connections logged yet</td></tr>'}
@@ -170,22 +159,49 @@ app.get('/', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      
       <title>Frendo - Anonymous Random Chat App</title>
-      <meta name="description" content="Talk to strangers online for free on Frendo! Safe, fast, and anonymous audio and text chat application.">
-      <meta property="og:title" content="Frendo - Anonymous Chat App">
-      <meta property="og:description" content="Connect with random people instantly on Frendo. Free text and voice notes chat!">
-      <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
-      <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
-
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
         body.ceo-mode { background-color: #0D0B08; }
         
-        .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
+        .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; transition: transform 0.2s ease; }
         body.ceo-mode .chat-card { background: #0D0B08; }
+
+        /* RICH ANIMATED TOAST NOTIFICATION */
+        .toast-notify {
+          position: fixed;
+          top: -60px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(239, 68, 68, 0.9);
+          backdrop-filter: blur(8px);
+          color: #fff;
+          padding: 10px 20px;
+          border-radius: 30px;
+          font-size: 13px;
+          font-weight: bold;
+          box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          z-index: 9999;
+          transition: top 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .toast-notify.show { top: 20px; }
+
+        /* SHAKE ANIMATION WHEN DISCONNECTED */
+        @keyframes shakeAlert {
+          0% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+          100% { transform: translateX(0); }
+        }
+        .shake { animation: shakeAlert 0.4s ease-in-out; }
 
         .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .header h3 { font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px; }
@@ -204,7 +220,6 @@ app.get('/', (req, res) => {
         body.ceo-mode .msg.me { background: linear-gradient(135deg, #B38728, #BF953F); color: #000; font-weight: bold; }
         
         .msg.stranger { align-self: flex-start; background: #1F2937; color: #fff; border-bottom-left-radius: 4px; }
-
         .msg.stranger.ceo-sender {
           background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728) !important;
           color: #000 !important;
@@ -232,7 +247,12 @@ app.get('/', (req, res) => {
     </head>
     <body id="bodyNode">
 
-      <div class="chat-card">
+      <!-- RICH ANIMATED TOAST NOTIFICATION -->
+      <div id="toast" class="toast-notify">
+        <span>🚫</span> <span id="toastMsg">Stranger disconnected</span>
+      </div>
+
+      <div class="chat-card" id="chatCard">
         <div class="header">
           <div>
             <h3 id="panelTitle"><img src="https://cdn-icons-png.flaticon.com/512/3820/3820107.png" width="22" height="22"> Frendo Chat</h3>
@@ -272,6 +292,9 @@ app.get('/', (req, res) => {
         let isRecording = false;
 
         const bodyNode = document.getElementById('bodyNode');
+        const chatCard = document.getElementById('chatCard');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
         const panelTitle = document.getElementById('panelTitle');
         const statusText = document.getElementById('statusText');
         const headerActions = document.getElementById('headerActions');
@@ -283,6 +306,14 @@ app.get('/', (req, res) => {
         const sendBtn = document.getElementById('sendBtn');
         const micBtn = document.getElementById('micBtn');
         const typingIndicator = document.getElementById('typingIndicator');
+
+        function showToast(text) {
+          toastMsg.innerText = text;
+          toast.classList.add('show');
+          chatCard.classList.add('shake');
+          setTimeout(() => { chatCard.classList.remove('shake'); }, 400);
+          setTimeout(() => { toast.classList.remove('show'); }, 2500);
+        }
 
         msgInput.addEventListener('focus', () => {
           setTimeout(() => {
@@ -386,7 +417,7 @@ app.get('/', (req, res) => {
         });
 
         socket.on('stranger_left', () => {
-          alert('Stranger left the chat.');
+          showToast('Stranger left the chat!');
           resetState();
         });
 
