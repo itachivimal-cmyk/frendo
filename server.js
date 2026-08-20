@@ -8,7 +8,6 @@ const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 const PORT = process.env.PORT || 3000;
 
-// Live Users Log Store Panna Simple Memory Array
 let liveLogs = [];
 let waitingQueue = [];
 
@@ -18,14 +17,13 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     socket.isCEO = data?.isCEO || false;
 
-    // Live Log Save Aagum
     const userDetail = {
       ip: clientIP,
       isCEO: socket.isCEO,
       connectedAt: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
     };
     liveLogs.unshift(userDetail);
-    if (liveLogs.length > 50) liveLogs.pop(); // Keep last 50 users only
+    if (liveLogs.length > 50) liveLogs.pop();
 
     if (waitingQueue.length > 0) {
       const partnerSocket = waitingQueue.pop();
@@ -87,7 +85,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Admin Route to View Stranger Logs (No Database Required!)
 app.get('/admin-logs-secret', (req, res) => {
   res.json({
     totalUsersCount: liveLogs.length,
@@ -102,12 +99,13 @@ app.get('/', (req, res) => {
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       <title>Anonymous Chat</title>
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { height: 100vh; width: 100vw; display: flex; justify-content: center; align-items: center; background-color: #0B0F19; color: #fff; overflow: hidden; position: relative; }
+        html, body { height: 100%; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; position: relative; }
+        body { display: flex; justify-content: center; align-items: center; }
         
         body.ceo-mode { background-color: #0D0B08; }
         .ceo-glow { display: none; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); }
@@ -124,7 +122,7 @@ app.get('/', (req, res) => {
           100% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
         }
 
-        .chat-card { width: 90%; max-width: 420px; height: 85vh; max-height: 650px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
+        .chat-card { width: 95%; max-width: 420px; height: 90vh; max-height: 650px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
         body.ceo-mode .chat-card { border-color: #D4AF37; box-shadow: 0 0 35px rgba(212, 175, 55, 0.25); }
 
         .header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
@@ -162,7 +160,7 @@ app.get('/', (req, res) => {
         .btn-start { background: #10b981; color: #fff; width: 100%; padding: 10px; }
 
         .input-area { padding: 12px 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; align-items: center; margin-top: 5px; }
-        .input-area input { flex: 1; background: #111; border: 1px solid #374151; border-radius: 10px; padding: 10px; color: #fff; outline: none; }
+        .input-area input { flex: 1; background: #111; border: 1px solid #374151; border-radius: 10px; padding: 10px; color: #fff; outline: none; font-size: 16px; }
         body.ceo-mode .input-area input { border-color: #B38728; }
         
         .mic-btn { border: none; padding: 8px 10px; border-radius: 10px; cursor: pointer; background: #1F2937; color: #fff; }
@@ -218,6 +216,14 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
+        // Keyboard resize height lock
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', () => {
+            document.body.style.height = window.visualViewport.height + 'px';
+            window.scrollTo(0, 0);
+          });
+        }
+
         const socket = io();
         const urlParams = new URLSearchParams(window.location.search);
         const isCEO = urlParams.get('secret') === 'ceo123';
