@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
@@ -9,23 +8,8 @@ const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 const PORT = process.env.PORT || 3000;
 
-// Unga MongoDB Atlas Connection String-a inga paste pannunga
-const MONGO_URI = process.env.MONGO_URI || "YOUR_MONGODB_ATLAS_CONNECTION_STRING_HERE";
-
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB Connected Successfully!'))
-  .catch(err => console.log('DB Connection Error:', err));
-
-// Database Schema Setup
-const UserLogSchema = new mongoose.Schema({
-  socketId: String,
-  ipAddress: String,
-  isCEO: Boolean,
-  joinedAt: { type: Date, default: Date.now }
-});
-
-const UserLog = mongoose.model('UserLog', UserLogSchema);
-
+// Live Users Log Store Panna Simple Memory Array
+let liveLogs = [];
 let waitingQueue = [];
 
 io.on('connection', (socket) => {
@@ -34,13 +18,14 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     socket.isCEO = data?.isCEO || false;
 
-    // Database-la Stranger/User Details Save Aagum
-    const newUser = new UserLog({
-      socketId: socket.id,
-      ipAddress: clientIP,
-      isCEO: socket.isCEO
-    });
-    newUser.save().catch(err => console.log('Log error:', err));
+    // Live Log Save Aagum
+    const userDetail = {
+      ip: clientIP,
+      isCEO: socket.isCEO,
+      connectedAt: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
+    };
+    liveLogs.unshift(userDetail);
+    if (liveLogs.length > 50) liveLogs.pop(); // Keep last 50 users only
 
     if (waitingQueue.length > 0) {
       const partnerSocket = waitingQueue.pop();
@@ -102,14 +87,13 @@ io.on('connection', (socket) => {
   });
 });
 
-// Admin Route to View Stranger Logs directly in Browser
-app.get('/admin-logs-secret', async (req, res) => {
-  try {
-    const logs = await UserLog.find().sort({ joinedAt: -1 }).limit(100);
-    res.json(logs);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch logs' });
-  }
+// Admin Route to View Stranger Logs (No Database Required!)
+app.get('/admin-logs-secret', (req, res) => {
+  res.json({
+    totalUsersCount: liveLogs.length,
+    usersInWaitingQueue: waitingQueue.length,
+    recentConnections: liveLogs
+  });
 });
 
 app.get('/', (req, res) => {
