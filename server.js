@@ -104,25 +104,31 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       
-      <!-- SEO Meta Tags for Google Search Ranking -->
+      <!-- SEO & Social Share Preview -->
       <title>Frendo - Anonymous Random Chat App</title>
       <meta name="description" content="Talk to strangers online for free on Frendo! Safe, fast, and anonymous audio and text chat application.">
       <meta name="keywords" content="Frendo, Frendo chat, random chat, talk to strangers, anonymous Tamil chat, Omegle alternative">
       <meta name="robots" content="index, follow">
       
-      <!-- Social Media Share Tags -->
+      <!-- WhatsApp Preview Card Details -->
       <meta property="og:title" content="Frendo - Anonymous Chat App">
-      <meta property="og:description" content="Connect with random people instantly on Frendo. Free text and voice notes chat.">
+      <meta property="og:description" content="Connect with random people instantly on Frendo. Free text and voice notes chat!">
+      <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
       <meta property="og:type" content="website">
       <meta property="og:url" content="https://frendo-server.onrender.com">
+
+      <!-- Browser Tab Logo -->
+      <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
 
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { height: 100vh; width: 100vw; display: flex; justify-content: center; align-items: center; background-color: #0B0F19; color: #fff; overflow: hidden; position: relative; }
+        
+        /* FULL SCREEN APP DESIGN */
+        html, body { height: 100%; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
         
         body.ceo-mode { background-color: #0D0B08; }
-        .ceo-glow { display: none; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); }
+        .ceo-glow { display: none; position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); pointer-events: none; }
         body.ceo-mode .ceo-glow { display: block; }
 
         .screen-yellow-glow {
@@ -136,24 +142,27 @@ app.get('/', (req, res) => {
           100% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
         }
 
-        .chat-card { width: 90%; max-width: 420px; height: 85vh; max-height: 650px; background: rgba(18, 18, 18, 0.85); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
-        body.ceo-mode .chat-card { border-color: #D4AF37; box-shadow: 0 0 35px rgba(212, 175, 55, 0.25); }
+        /* FULL SCREEN CONTAINER */
+        .chat-card { width: 100vw; height: 100vh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
+        body.ceo-mode .chat-card { background: #0D0B08; }
 
-        .header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .header h3 { font-size: 16px; color: #fff; }
+        .header { padding: 15px 20px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .header h3 { font-size: 18px; color: #fff; display: flex; align-items: center; gap: 8px; }
         body.ceo-mode .header h3 { color: #D4AF37; }
         
-        .header-actions { display: flex; gap: 6px; }
-        .btn-sm { border: none; padding: 6px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .header-actions { display: flex; gap: 8px; }
+        .btn-sm { border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-report { background: #374151; color: #f87171; }
         .btn-block { background: #991b1b; color: #fff; }
 
-        .message-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px 14px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 14px; }
-        .msg.me { align-self: flex-end; background: #2563EB; color: #fff; }
+        .message-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #0B0F19; }
+        body.ceo-mode .message-area { background: #0D0B08; }
+
+        .msg { padding: 12px 16px; border-radius: 16px; max-width: 80%; word-break: break-word; font-size: 15px; line-height: 1.4; }
+        .msg.me { align-self: flex-end; background: #2563EB; color: #fff; border-bottom-right-radius: 4px; }
         body.ceo-mode .msg.me { background: linear-gradient(135deg, #B38728, #BF953F); color: #000; font-weight: bold; }
         
-        .msg.stranger { align-self: flex-start; background: #1F2937; color: #fff; }
+        .msg.stranger { align-self: flex-start; background: #1F2937; color: #fff; border-bottom-left-radius: 4px; }
 
         .msg.stranger.ceo-sender {
           background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728) !important;
@@ -163,25 +172,25 @@ app.get('/', (req, res) => {
           box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
         }
 
-        audio { max-width: 200px; height: 35px; }
+        audio { max-width: 220px; height: 35px; }
 
-        .typing-indicator { display: none; padding: 4px 15px; font-size: 12px; color: #aaa; font-style: italic; }
+        .typing-indicator { display: none; padding: 6px 15px; font-size: 13px; color: #aaa; font-style: italic; }
 
-        .action-bar { padding: 10px 15px 0 15px; display: flex; gap: 8px; justify-content: space-between; }
-        .btn-action { flex: 1; border: none; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .action-bar { padding: 10px 15px; background: #111827; display: flex; gap: 10px; justify-content: space-between; }
+        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
         .btn-skip { background: #f59e0b; color: #000; }
         .btn-end { background: #ef4444; color: #fff; }
-        .btn-start { background: #10b981; color: #fff; width: 100%; padding: 10px; }
+        .btn-start { background: #10b981; color: #fff; width: 100%; padding: 12px; }
 
-        .input-area { padding: 12px 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; align-items: center; margin-top: 5px; }
-        .input-area input { flex: 1; background: #111; border: 1px solid #374151; border-radius: 10px; padding: 10px; color: #fff; outline: none; font-size: 16px; }
+        .input-area { padding: 12px 15px; background: #111827; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; align-items: center; }
+        .input-area input { flex: 1; background: #1F2937; border: 1px solid #374151; border-radius: 12px; padding: 12px; color: #fff; outline: none; font-size: 16px; }
         body.ceo-mode .input-area input { border-color: #B38728; }
         
-        .mic-btn { border: none; padding: 8px 10px; border-radius: 10px; cursor: pointer; background: #1F2937; color: #fff; }
+        .mic-btn { border: none; padding: 12px 14px; border-radius: 12px; cursor: pointer; background: #374151; color: #fff; font-size: 16px; }
         .mic-btn.recording { background: #EF4444; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        .send-btn { border: none; padding: 10px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; background: #3B82F6; color: #fff; }
+        .send-btn { border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; cursor: pointer; background: #2563EB; color: #fff; font-size: 15px; }
         body.ceo-mode .send-btn { background: #D4AF37; color: #000; }
 
         .butterfly-container { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 99; overflow: hidden; }
@@ -203,8 +212,8 @@ app.get('/', (req, res) => {
       <div class="chat-card">
         <div class="header">
           <div>
-            <h3 id="panelTitle">Anonymous Chat</h3>
-            <span id="statusText" style="font-size: 11px; color: #888;">Offline</span>
+            <h3 id="panelTitle"><img src="https://cdn-icons-png.flaticon.com/512/3820/3820107.png" width="22" height="22"> Frendo Chat</h3>
+            <span id="statusText" style="font-size: 12px; color: #9CA3AF;">Offline</span>
           </div>
           <div class="header-actions" id="headerActions" style="display: none;">
             <button class="btn-sm btn-report" onclick="handleReport()">🚩 Report</button>
@@ -217,7 +226,7 @@ app.get('/', (req, res) => {
         <div class="typing-indicator" id="typingIndicator">Stranger is typing...</div>
 
         <div class="action-bar" id="actionBar">
-          <button id="startBtn" class="btn-action btn-start" onclick="handleConnect()">New Chat</button>
+          <button id="startBtn" class="btn-action btn-start" onclick="handleConnect()">Start New Chat</button>
           <button id="skipBtn" class="btn-action btn-skip" onclick="handleSkip()" style="display: none;">⏩ Skip Chat</button>
           <button id="endBtn" class="btn-action btn-end" onclick="handleEndChat()" style="display: none;">❌ End Chat</button>
         </div>
@@ -230,7 +239,7 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
-        // Mobile Keyboard Viewport Resize Lock Fix
+        // FULL SCREEN KEYBOARD RESIZE FIX
         if (window.visualViewport) {
           window.visualViewport.addEventListener('resize', () => {
             document.body.style.height = window.visualViewport.height + 'px';
@@ -264,7 +273,7 @@ app.get('/', (req, res) => {
 
         if (isCEO) {
           bodyNode.classList.add('ceo-mode');
-          panelTitle.innerText = '👑 CEO DOMINANT PANEL';
+          panelTitle.innerHTML = '👑 CEO DOMINANT PANEL';
         }
 
         function handleConnect() {
