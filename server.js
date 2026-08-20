@@ -1,19 +1,46 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
-// Render / Production Dynamic Port
 const PORT = process.env.PORT || 3000;
+
+// Unga MongoDB Atlas Connection String-a inga paste pannunga
+const MONGO_URI = process.env.MONGO_URI || "YOUR_MONGODB_ATLAS_CONNECTION_STRING_HERE";
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('MongoDB Connected Successfully!'))
+  .catch(err => console.log('DB Connection Error:', err));
+
+// Database Schema Setup
+const UserLogSchema = new mongoose.Schema({
+  socketId: String,
+  ipAddress: String,
+  isCEO: Boolean,
+  joinedAt: { type: Date, default: Date.now }
+});
+
+const UserLog = mongoose.model('UserLog', UserLogSchema);
 
 let waitingQueue = [];
 
 io.on('connection', (socket) => {
+  const clientIP = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+
   socket.on('find_partner', (data) => {
     socket.isCEO = data?.isCEO || false;
+
+    // Database-la Stranger/User Details Save Aagum
+    const newUser = new UserLog({
+      socketId: socket.id,
+      ipAddress: clientIP,
+      isCEO: socket.isCEO
+    });
+    newUser.save().catch(err => console.log('Log error:', err));
 
     if (waitingQueue.length > 0) {
       const partnerSocket = waitingQueue.pop();
@@ -75,6 +102,16 @@ io.on('connection', (socket) => {
   });
 });
 
+// Admin Route to View Stranger Logs directly in Browser
+app.get('/admin-logs-secret', async (req, res) => {
+  try {
+    const logs = await UserLog.find().sort({ joinedAt: -1 }).limit(100);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -92,7 +129,6 @@ app.get('/', (req, res) => {
         .ceo-glow { display: none; position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); }
         body.ceo-mode .ceo-glow { display: block; }
 
-        /* Yellow Pulse Edge Light for Stranger Screen */
         .screen-yellow-glow {
           box-shadow: inset 0 0 25px #D4AF37, inset 0 0 50px rgba(212, 175, 55, 0.6) !important;
           animation: yellowPulse 2s infinite ease-in-out;
