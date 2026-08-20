@@ -124,8 +124,8 @@ app.get('/', (req, res) => {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        /* FULL SCREEN APP DESIGN */
-        html, body { height: 100%; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
+        /* DYNAMIC VIEWPORT HEIGHT (Fixes Keyboard Hiding Issue) */
+        html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
         
         body.ceo-mode { background-color: #0D0B08; }
         .ceo-glow { display: none; position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); pointer-events: none; }
@@ -142,12 +142,12 @@ app.get('/', (req, res) => {
           100% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
         }
 
-        /* FULL SCREEN CONTAINER */
-        .chat-card { width: 100vw; height: 100vh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
+        /* FULL SCREEN FLEXBOX CONTAINER */
+        .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
         body.ceo-mode .chat-card { background: #0D0B08; }
 
-        .header { padding: 15px 20px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-        .header h3 { font-size: 18px; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; flex-shrink: 0; }
+        .header h3 { font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px; }
         body.ceo-mode .header h3 { color: #D4AF37; }
         
         .header-actions { display: flex; gap: 8px; }
@@ -172,25 +172,25 @@ app.get('/', (req, res) => {
           box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
         }
 
-        audio { max-width: 220px; height: 35px; }
+        audio { max-width: 200px; height: 35px; }
 
-        .typing-indicator { display: none; padding: 6px 15px; font-size: 13px; color: #aaa; font-style: italic; }
+        .typing-indicator { display: none; padding: 4px 15px; font-size: 12px; color: #aaa; font-style: italic; flex-shrink: 0; }
 
-        .action-bar { padding: 10px 15px; background: #111827; display: flex; gap: 10px; justify-content: space-between; }
-        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .action-bar { padding: 8px 15px; background: #111827; display: flex; gap: 10px; justify-content: space-between; flex-shrink: 0; }
+        .btn-action { flex: 1; border: none; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
         .btn-skip { background: #f59e0b; color: #000; }
         .btn-end { background: #ef4444; color: #fff; }
-        .btn-start { background: #10b981; color: #fff; width: 100%; padding: 12px; }
+        .btn-start { background: #10b981; color: #fff; width: 100%; padding: 10px; }
 
-        .input-area { padding: 12px 15px; background: #111827; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px; align-items: center; }
+        .input-area { padding: 10px 15px; background: #111827; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
         .input-area input { flex: 1; background: #1F2937; border: 1px solid #374151; border-radius: 12px; padding: 12px; color: #fff; outline: none; font-size: 16px; }
         body.ceo-mode .input-area input { border-color: #B38728; }
         
-        .mic-btn { border: none; padding: 12px 14px; border-radius: 12px; cursor: pointer; background: #374151; color: #fff; font-size: 16px; }
+        .mic-btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; background: #374151; color: #fff; font-size: 16px; }
         .mic-btn.recording { background: #EF4444; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        .send-btn { border: none; padding: 12px 18px; border-radius: 12px; font-weight: bold; cursor: pointer; background: #2563EB; color: #fff; font-size: 15px; }
+        .send-btn { border: none; padding: 12px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; background: #2563EB; color: #fff; font-size: 15px; }
         body.ceo-mode .send-btn { background: #D4AF37; color: #000; }
 
         .butterfly-container { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 99; overflow: hidden; }
@@ -270,6 +270,13 @@ app.get('/', (req, res) => {
         const micBtn = document.getElementById('micBtn');
         const bfContainer = document.getElementById('bfContainer');
         const typingIndicator = document.getElementById('typingIndicator');
+
+        // KEYBOARD OPENING FIX - Auto scroll to keep input visible
+        msgInput.addEventListener('focus', () => {
+          setTimeout(() => {
+            msgInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 300);
+        });
 
         if (isCEO) {
           bodyNode.classList.add('ceo-mode');
