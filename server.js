@@ -8,7 +8,6 @@ const io = new Server(server, { maxHttpBufferSize: 1e7 });
 
 const PORT = process.env.PORT || 3000;
 
-// Live Users Log Store Panna Simple Memory Array
 let liveLogs = [];
 let waitingQueue = [];
 
@@ -18,7 +17,6 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     socket.isCEO = data?.isCEO || false;
 
-    // Live Log Save Aagum
     const userDetail = {
       ip: clientIP,
       isCEO: socket.isCEO,
@@ -87,13 +85,65 @@ io.on('connection', (socket) => {
   });
 });
 
-// Admin Route to View Stranger Logs
+// CLEAN & PROFESSIONAL ADMIN DASHBOARD
 app.get('/admin-logs-secret', (req, res) => {
-  res.json({
-    totalUsersCount: liveLogs.length,
-    usersInWaitingQueue: waitingQueue.length,
-    recentConnections: liveLogs
-  });
+  let tableRows = liveLogs.map((user, index) => `
+    <tr>
+      <td>#${liveLogs.length - index}</td>
+      <td><code>${user.ip}</code></td>
+      <td>${user.isCEO ? '<span class="badge ceo">👑 CEO</span>' : '<span class="badge user">Stranger User</span>'}</td>
+      <td>${user.connectedAt}</td>
+    </tr>
+  `).join('');
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Frendo Admin Dashboard</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0B0F19; color: #fff; padding: 25px 15px; margin: 0; }
+        .container { max-width: 850px; margin: 0 auto; }
+        h2 { color: #D4AF37; margin-bottom: 20px; text-align: center; font-size: 24px; }
+        .stats-grid { display: flex; gap: 15px; margin-bottom: 25px; justify-content: center; }
+        .card { background: #111827; padding: 18px 25px; border-radius: 12px; border: 1px solid #374151; text-align: center; flex: 1; max-width: 200px; }
+        .card h4 { margin: 0 0 6px 0; color: #9CA3AF; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card p { margin: 0; font-size: 26px; font-weight: bold; color: #2563EB; }
+        table { width: 100%; border-collapse: collapse; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid #1F2937; }
+        th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #1F2937; font-size: 14px; }
+        th { background: #1F2937; color: #D4AF37; font-size: 13px; text-transform: uppercase; }
+        code { background: #0B0F19; padding: 4px 8px; border-radius: 6px; color: #60A5FA; font-size: 13px; }
+        .badge { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .badge.ceo { background: #D4AF37; color: #000; }
+        .badge.user { background: #374151; color: #D1D5DB; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h2>📊 Frendo Live Monitor Dashboard</h2>
+        <div class="stats-grid">
+          <div class="card"><h4>Total Connections</h4><p>${liveLogs.length}</p></div>
+          <div class="card"><h4>Waiting Queue</h4><p>${waitingQueue.length}</p></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>IP Address</th>
+              <th>Role</th>
+              <th>Connected Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows.length ? tableRows : '<tr><td colspan="4" style="text-align:center; color:#9CA3AF;">No active connections logged yet</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 app.get('/', (req, res) => {
@@ -104,49 +154,23 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       
-      <!-- SEO & Social Share Preview -->
       <title>Frendo - Anonymous Random Chat App</title>
       <meta name="description" content="Talk to strangers online for free on Frendo! Safe, fast, and anonymous audio and text chat application.">
-      <meta name="keywords" content="Frendo, Frendo chat, random chat, talk to strangers, anonymous Tamil chat, Omegle alternative">
-      <meta name="robots" content="index, follow">
-      
-      <!-- WhatsApp Preview Card Details -->
       <meta property="og:title" content="Frendo - Anonymous Chat App">
       <meta property="og:description" content="Connect with random people instantly on Frendo. Free text and voice notes chat!">
       <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
-      <meta property="og:type" content="website">
-      <meta property="og:url" content="https://frendo-server.onrender.com">
-
-      <!-- Browser Tab Logo -->
       <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3820/3820107.png">
 
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        /* DYNAMIC VIEWPORT HEIGHT (Fixes Keyboard Hiding Issue) */
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
-        
         body.ceo-mode { background-color: #0D0B08; }
-        .ceo-glow { display: none; position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); pointer-events: none; }
-        body.ceo-mode .ceo-glow { display: block; }
-
-        .screen-yellow-glow {
-          box-shadow: inset 0 0 25px #D4AF37, inset 0 0 50px rgba(212, 175, 55, 0.6) !important;
-          animation: yellowPulse 2s infinite ease-in-out;
-        }
-
-        @keyframes yellowPulse {
-          0% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
-          50% { box-shadow: inset 0 0 35px #FFD700, inset 0 0 70px rgba(255, 215, 0, 0.8); }
-          100% { box-shadow: inset 0 0 20px #D4AF37, inset 0 0 40px rgba(212, 175, 55, 0.5); }
-        }
-
-        /* FULL SCREEN FLEXBOX CONTAINER */
+        
         .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
         body.ceo-mode .chat-card { background: #0D0B08; }
 
-        .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; flex-shrink: 0; }
+        .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .header h3 { font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px; }
         body.ceo-mode .header h3 { color: #D4AF37; }
         
@@ -169,14 +193,12 @@ app.get('/', (req, res) => {
           color: #000 !important;
           font-weight: bold;
           border: 1px solid #D4AF37;
-          box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
         }
 
         audio { max-width: 200px; height: 35px; }
-
         .typing-indicator { display: none; padding: 4px 15px; font-size: 12px; color: #aaa; font-style: italic; flex-shrink: 0; }
 
-        .action-bar { padding: 8px 15px; background: #111827; display: flex; gap: 10px; justify-content: space-between; flex-shrink: 0; }
+        .action-bar { padding: 8px 15px; background: #111827; display: flex; gap: 10px; flex-shrink: 0; }
         .btn-action { flex: 1; border: none; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
         .btn-skip { background: #f59e0b; color: #000; }
         .btn-end { background: #ef4444; color: #fff; }
@@ -184,30 +206,14 @@ app.get('/', (req, res) => {
 
         .input-area { padding: 10px 15px; background: #111827; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
         .input-area input { flex: 1; background: #1F2937; border: 1px solid #374151; border-radius: 12px; padding: 12px; color: #fff; outline: none; font-size: 16px; }
-        body.ceo-mode .input-area input { border-color: #B38728; }
         
         .mic-btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; background: #374151; color: #fff; font-size: 16px; }
-        .mic-btn.recording { background: #EF4444; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
+        .mic-btn.recording { background: #EF4444; }
         .send-btn { border: none; padding: 12px 16px; border-radius: 12px; font-weight: bold; cursor: pointer; background: #2563EB; color: #fff; font-size: 15px; }
         body.ceo-mode .send-btn { background: #D4AF37; color: #000; }
-
-        .butterfly-container { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 99; overflow: hidden; }
-        .butterfly { position: absolute; font-size: 35px; animation: fly 6s infinite ease-in-out; }
-        .b1 { top: 80%; left: 10%; animation-delay: 0s; }
-        .b2 { top: 70%; left: 80%; animation-delay: 1.5s; }
-        @keyframes fly { 0% { transform: translateY(0); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-600px); opacity: 0; } }
       </style>
     </head>
     <body id="bodyNode">
-
-      <div class="ceo-glow"></div>
-
-      <div class="butterfly-container" id="bfContainer">
-        <div class="butterfly b1">🦋</div>
-        <div class="butterfly b2">✨ 🦋</div>
-      </div>
 
       <div class="chat-card">
         <div class="header">
@@ -222,7 +228,6 @@ app.get('/', (req, res) => {
         </div>
 
         <div class="message-area" id="messageArea"></div>
-
         <div class="typing-indicator" id="typingIndicator">Stranger is typing...</div>
 
         <div class="action-bar" id="actionBar">
@@ -239,14 +244,6 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
-        // FULL SCREEN KEYBOARD RESIZE FIX
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', () => {
-            document.body.style.height = window.visualViewport.height + 'px';
-            window.scrollTo(0, 0);
-          });
-        }
-
         const socket = io();
         const urlParams = new URLSearchParams(window.location.search);
         const isCEO = urlParams.get('secret') === 'ceo123';
@@ -268,13 +265,12 @@ app.get('/', (req, res) => {
         const msgInput = document.getElementById('msgInput');
         const sendBtn = document.getElementById('sendBtn');
         const micBtn = document.getElementById('micBtn');
-        const bfContainer = document.getElementById('bfContainer');
         const typingIndicator = document.getElementById('typingIndicator');
 
-        // KEYBOARD OPENING FIX - Auto scroll to keep input visible
+        // KEYBOARD SCROLL FIX
         msgInput.addEventListener('focus', () => {
           setTimeout(() => {
-            msgInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            msgInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }, 300);
         });
 
@@ -302,16 +298,6 @@ app.get('/', (req, res) => {
           resetState();
         }
 
-        function handleBlock() {
-          alert('User blocked successfully!');
-          handleEndChat();
-        }
-
-        function handleReport() {
-          alert('User has been reported to moderation team.');
-          handleEndChat();
-        }
-
         function resetState() {
           isConnected = false;
           statusText.innerText = 'Offline';
@@ -323,9 +309,7 @@ app.get('/', (req, res) => {
           sendBtn.disabled = true;
           micBtn.disabled = true;
           msgInput.placeholder = 'Connect first...';
-          bfContainer.style.display = 'none';
           typingIndicator.style.display = 'none';
-          bodyNode.classList.remove('screen-yellow-glow');
         }
 
         function handleTyping() {
@@ -370,12 +354,6 @@ app.get('/', (req, res) => {
           micBtn.disabled = false;
           msgInput.placeholder = 'Type a message...';
           messageArea.innerHTML = '';
-
-          if (data.partnerIsCEO && !isCEO) {
-            bodyNode.classList.add('screen-yellow-glow');
-            bfContainer.style.display = 'block';
-            setTimeout(() => { bfContainer.style.display = 'none'; }, 8000);
-          }
         });
 
         socket.on('partner_typing', () => { typingIndicator.style.display = 'block'; });
@@ -409,7 +387,7 @@ app.get('/', (req, res) => {
         function addMessage(text, type, isSenderCEO = false) {
           const div = document.createElement('div');
           div.className = 'msg ' + type;
-          
+
           if (isSenderCEO) {
             div.classList.add('ceo-sender');
             div.innerText = '👑 CEO: ' + text;
