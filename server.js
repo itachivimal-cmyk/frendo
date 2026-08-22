@@ -12,8 +12,9 @@ const HOST = '0.0.0.0';
 const SECRET_PASS = "xiaoqi143@";
 
 let activeUsers = 0;
-let waitingQueue = []; // Holds socket IDs
+let waitingQueue = []; 
 let activeRooms = {}; 
+let adminLogs = {}; 
 
 app.use(express.json());
 
@@ -42,18 +43,6 @@ function renderApp(res, isCEO) {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
 
-        body.ceo-entrance-active {
-          box-shadow: inset 0 0 35px #EAB308, inset 0 0 15px #EAB308;
-          transition: box-shadow 0.5s ease-in-out;
-        }
-
-        #fadeOverlay {
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
-          background: rgba(5, 7, 12, 0.88); z-index: 999; display: none;
-          pointer-events: none; opacity: 0; transition: opacity 0.5s ease;
-        }
-        #fadeOverlay.active { display: block; opacity: 1; }
-
         #customToast {
           position: fixed; top: -70px; left: 50%; transform: translateX(-50%);
           background: rgba(239, 68, 68, 0.95); backdrop-filter: blur(8px);
@@ -63,7 +52,17 @@ function renderApp(res, isCEO) {
           display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.2);
         }
         #customToast.show { top: 20px; }
-        
+
+        #ceoToast {
+          position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+          background: linear-gradient(135deg, #EAB308, #CA8A04); backdrop-filter: blur(8px);
+          color: #000; padding: 14px 28px; border-radius: 30px; font-weight: 900;
+          font-size: 15px; box-shadow: 0 10px 30px rgba(234, 179, 8, 0.8); z-index: 1001;
+          transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          display: flex; align-items: center; gap: 8px; border: 2px solid #FFF; text-transform: uppercase;
+        }
+        #ceoToast.show { top: 25px; }
+
         .app-landing {
           width: 100vw; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
           padding: 40px 20px; background: radial-gradient(circle at top, #1E1B4B 0%, #0B0F19 80%); text-align: center;
@@ -103,7 +102,9 @@ function renderApp(res, isCEO) {
         .message-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0B0F19; }
         .msg { padding: 10px 14px; border-radius: 14px; max-width: 80%; word-break: break-word; font-size: 14px; }
         .msg.me { align-self: flex-end; background: #2563EB; color: #fff; border-bottom-right-radius: 2px; }
+        .msg.me-ceo { align-self: flex-end; background: linear-gradient(135deg, #EAB308, #CA8A04); color: #000; font-weight: bold; border-bottom-right-radius: 2px; }
         .msg.stranger { align-self: flex-start; background: #1F2937; color: #fff; border-bottom-left-radius: 2px; }
+        .msg.ceo-msg { align-self: flex-start; background: linear-gradient(135deg, #EAB308, #CA8A04); color: #000; font-weight: bold; border-bottom-left-radius: 2px; border: 1px solid #FFF; }
 
         .action-bar { padding: 8px 15px; background: #111827; display: flex; gap: 8px; }
         .btn-action { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
@@ -118,8 +119,8 @@ function renderApp(res, isCEO) {
     </head>
     <body>
 
-      <div id="fadeOverlay"></div>
       <div id="customToast"><span>⚠️ Stranger Disconnected!</span></div>
+      <div id="ceoToast"><span>👑 WOW! You connected with CEO! 👑</span></div>
 
       <div id="landingScreen" class="app-landing">
         <div>
@@ -179,7 +180,7 @@ function renderApp(res, isCEO) {
         const msgInput = document.getElementById('msgInput');
         const sendBtn = document.getElementById('sendBtn');
         const customToast = document.getElementById('customToast');
-        const fadeOverlay = document.getElementById('fadeOverlay');
+        const ceoToast = document.getElementById('ceoToast');
 
         function openChatScreen() { landingScreen.classList.add('hide'); }
         function closeChatScreen() { if(isConnected) handleEndChat(); landingScreen.classList.remove('hide'); }
@@ -215,8 +216,6 @@ function renderApp(res, isCEO) {
           msgInput.disabled = true;
           sendBtn.disabled = true;
           msgInput.placeholder = 'Connect first...';
-          document.body.classList.remove('ceo-entrance-active');
-          fadeOverlay.classList.remove('active');
         }
 
         socket.on('waiting', () => { statusText.innerText = 'Searching...'; });
@@ -229,38 +228,47 @@ function renderApp(res, isCEO) {
           msgInput.placeholder = 'Type a message...';
           messageArea.innerHTML = '';
 
-          if (data && data.hasCEO) {
+          if (data && data.hasCEO && !IS_CEO) {
             triggerCEOEntrance();
           }
         });
 
+        // 5 Seconds Rocket Launch Fireworks (Red, Yellow, Green Colors)
         function triggerCEOEntrance() {
-          document.body.classList.add('ceo-entrance-active');
-          fadeOverlay.classList.add('active');
+          ceoToast.classList.add('show');
+          setTimeout(() => { ceoToast.classList.remove('show'); }, 4000);
 
-          const duration = 8 * 1000;
+          const duration = 5 * 1000;
           const animationEnd = Date.now() + duration;
 
           const interval = setInterval(function() {
             const timeLeft = animationEnd - Date.now();
             if (timeLeft <= 0) {
-              clearInterval(interval);
-              fadeOverlay.classList.remove('active');
-              document.body.classList.remove('ceo-entrance-active');
-              return;
+              return clearInterval(interval);
             }
 
+            // Launch Rocket Fireworks from Bottom to Up
             confetti({
-              particleCount: 12,
-              startVelocity: 45,
-              spread: 360,
-              origin: { x: Math.random(), y: Math.random() * 0.4 + 0.6 },
-              colors: ['#EAB308', '#EC4899', '#38BDF8', '#ffffff']
+              particleCount: 25,
+              angle: 60,
+              spread: 55,
+              origin: { x: 0, y: 0.8 },
+              colors: ['#ef4444', '#facc15', '#22c55e'] // Red, Yellow, Green
             });
-          }, 300);
+            confetti({
+              particleCount: 25,
+              angle: 120,
+              spread: 55,
+              origin: { x: 1, y: 0.8 },
+              colors: ['#ef4444', '#facc15', '#22c55e'] // Red, Yellow, Green
+            });
+          }, 350);
         }
 
-        socket.on('receive_message', (data) => { addMessage(data.message, 'stranger'); });
+        socket.on('receive_message', (data) => { 
+          const msgType = data.isCEO ? 'ceo-msg' : 'stranger';
+          addMessage(data.message, msgType); 
+        });
         
         socket.on('stranger_left', () => { 
           showToast('⚠️ Stranger disconnected!'); 
@@ -270,8 +278,9 @@ function renderApp(res, isCEO) {
         function sendMessage() {
           const text = msgInput.value.trim();
           if (text && isConnected) {
-            socket.emit('send_message', { message: text });
-            addMessage(text, 'me');
+            socket.emit('send_message', { message: text, isCEO: IS_CEO });
+            const myMsgClass = IS_CEO ? 'me-ceo' : 'me';
+            addMessage(text, myMsgClass);
             msgInput.value = '';
           }
         }
@@ -316,11 +325,12 @@ app.get('/admin', (req, res) => {
         .box { flex: 1; background: #1e293b; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #334155; }
         .spy-box { flex: 2; background: #000; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #334155; }
         
-        .room-item { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; }
+        .room-item { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .room-item:hover { background: #0284c7; }
         .room-item.active { background: #0284c7; font-weight: bold; }
+        .btn-delete { background: #ef4444; border: none; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
         
-        #chatStream { flex: 1; overflow-y: auto; font-family: monospace; font-size: 13px; color: #22c55e; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
+        #chatStream { flex: 1; overflow-y: auto; font-family: monospace; font-size: 13px; color: #38bdf8; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
         th, td { padding: 8px 10px; border-bottom: 1px solid #334155; }
@@ -328,7 +338,7 @@ app.get('/admin', (req, res) => {
       </style>
     </head>
     <body>
-      <h2>⚡ Scalable Admin Control Center</h2>
+      <h2>⚡ Admin Spy Control Center</h2>
       
       <div class="stats">
         <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
@@ -338,22 +348,22 @@ app.get('/admin', (req, res) => {
 
       <div class="main-container">
         <div class="box">
-          <h3 style="margin-bottom:12px; font-size: 14px;">Active Chat Rooms (Spy)</h3>
+          <h3 style="margin-bottom:12px; font-size: 14px;">Active Chat Rooms (Click to Spy)</h3>
           <div id="roomContainer"><i>No active rooms...</i></div>
         </div>
 
         <div class="spy-box">
-          <h3 id="spyTitle" style="font-size:14px;">Target: None Selected</h3>
-          <div id="chatStream">Select a room from left side to monitor...</div>
+          <h3 id="spyTitle" style="font-size:14px; color:#facc15;">Target: None Selected</h3>
+          <div id="chatStream">Select a room to spy live messages...</div>
         </div>
       </div>
 
       <div class="box" style="height:200px;">
-        <h3 style="margin-bottom:10px; font-size: 14px; color:#EAB308;">⏳ Waiting for Connection Queue</h3>
+        <h3 style="margin-bottom:10px; font-size: 14px; color:#EAB308;">⏳ Waiting for Queue</h3>
         <table>
           <thead>
             <tr>
-              <th>Socket ID</th>
+              <th>User Tag</th>
               <th>Status</th>
               <th>Role</th>
             </tr>
@@ -382,13 +392,18 @@ app.get('/admin', (req, res) => {
           const container = document.getElementById('roomContainer');
           if (rooms.length === 0) { container.innerHTML = '<i>No active rooms...</i>'; return; }
           container.innerHTML = '';
-          rooms.forEach(roomId => {
+          rooms.forEach(room => {
             const div = document.createElement('div');
-            div.className = 'room-item ' + (selectedRoom === roomId ? 'active' : '');
-            div.innerText = '🔒 ' + roomId;
-            div.onclick = () => selectRoom(roomId);
+            div.className = 'room-item ' + (selectedRoom === room.id ? 'active' : '');
+            div.innerHTML = '<span>🔒 Room: ' + room.id + '</span> <button class="btn-delete" onclick="deleteRoom(\'' + room.id + '\', event)">Close Room</button>';
+            div.onclick = () => selectRoom(room.id);
             container.appendChild(div);
           });
+        }
+
+        function deleteRoom(roomId, event) {
+          event.stopPropagation();
+          socket.emit('admin_close_room', roomId);
         }
 
         function renderQueue(queue) {
@@ -398,34 +413,47 @@ app.get('/admin', (req, res) => {
             return;
           }
           tbody.innerHTML = '';
-          queue.forEach(item => {
+          queue.forEach((item, idx) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td>' + item.id + '</td><td><span style="color:#EAB308">Searching...</span></td><td>' + (item.isCEO ? '👑 CEO' : 'User') + '</td>';
+            tr.innerHTML = '<td>Stranger ' + (idx + 1) + '</td><td><span style="color:#EAB308">Searching...</span></td><td>' + (item.isCEO ? '👑 CEO' : 'User') + '</td>';
             tbody.appendChild(tr);
           });
         }
 
         function selectRoom(roomId) {
           selectedRoom = roomId;
-          document.getElementById('spyTitle').innerText = 'Spying Target: ' + roomId;
+          document.getElementById('spyTitle').innerText = 'Spying Room: ' + roomId;
           document.getElementById('chatStream').innerHTML = '<i>-- Connected to ' + roomId + ' --</i><br>';
-          socket.emit('set_spy_target', roomId);
+          socket.emit('get_room_history', roomId);
         }
+
+        socket.on('admin_chat_history', (data) => {
+          if (data.roomId === selectedRoom) {
+            const stream = document.getElementById('chatStream');
+            stream.innerHTML = '<i>-- Live Stream: ' + data.roomId + ' --</i><br>';
+            data.history.forEach(log => appendLog(log));
+          }
+        });
 
         socket.on('admin_chat_log', (data) => {
           if (data.roomId === selectedRoom) {
-            const stream = document.getElementById('chatStream');
-            stream.innerHTML += '<div><b>[' + data.roomId + ']:</b> ' + data.msg + '</div>';
-            stream.scrollTop = stream.scrollHeight;
+            appendLog(data);
           }
         });
+
+        function appendLog(data) {
+          const stream = document.getElementById('chatStream');
+          const color = data.sender.includes('CEO') ? '#facc15' : '#38bdf8';
+          stream.innerHTML += '<div style="margin-top:4px;"><b style="color:' + color + '">[' + data.sender + ']:</b> ' + data.msg + '</div>';
+          stream.scrollTop = stream.scrollHeight;
+        }
       </script>
     </body>
     </html>
   `);
 });
 
-// Socket logic with optimized Queue Matchmaking
+// Socket logic
 io.on('connection', (socket) => {
   activeUsers++;
   io.emit('update_online_count', activeUsers);
@@ -438,16 +466,30 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('get_room_history', (roomId) => {
+    socket.emit('admin_chat_history', {
+      roomId,
+      history: adminLogs[roomId] || []
+    });
+  });
+
+  socket.on('admin_close_room', (roomId) => {
+    if (activeRooms[roomId]) {
+      io.to(roomId).emit('stranger_left');
+      delete activeRooms[roomId];
+      delete adminLogs[roomId];
+      broadcastAdminStats();
+    }
+  });
+
   socket.on('find_partner', (data) => {
     socket.isCEO = data && data.isCEO;
 
-    // Clean broken sockets from waitingQueue
     waitingQueue = waitingQueue.filter(id => {
       const s = io.sockets.sockets.get(id);
       return s && s.connected && !s.currentRoom;
     });
 
-    // Remove current socket if already in queue to prevent duplicate matching
     waitingQueue = waitingQueue.filter(id => id !== socket.id);
 
     if (waitingQueue.length > 0) {
@@ -455,7 +497,7 @@ io.on('connection', (socket) => {
       const partner = io.sockets.sockets.get(partnerId);
 
       if (partner && partner.connected) {
-        const roomId = `room_${socket.id.substring(0, 4)}_${partner.id.substring(0, 4)}`;
+        const roomId = `Room_${Math.floor(1000 + Math.random() * 9000)}`;
         const hasCEO = socket.isCEO || partner.isCEO;
 
         socket.join(roomId);
@@ -463,7 +505,16 @@ io.on('connection', (socket) => {
         socket.currentRoom = roomId;
         partner.currentRoom = roomId;
 
-        activeRooms[roomId] = true;
+        let user1Label = socket.isCEO ? "👑 CEO" : "Stranger 1";
+        let user2Label = partner.isCEO ? "👑 CEO" : (socket.isCEO ? "Stranger 1" : "Stranger 2");
+
+        activeRooms[roomId] = {
+          users: [
+            { id: socket.id, label: user1Label },
+            { id: partner.id, label: user2Label }
+          ]
+        };
+        adminLogs[roomId] = [];
 
         socket.emit('chat_start', { hasCEO });
         partner.emit('chat_start', { hasCEO });
@@ -479,13 +530,26 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_message', (data) => {
-    if (socket.currentRoom) {
-      socket.to(socket.currentRoom).emit('receive_message', data);
-      
-      io.to('admin_room').emit('admin_chat_log', {
-        roomId: socket.currentRoom,
-        msg: data.message
+    if (socket.currentRoom && activeRooms[socket.currentRoom]) {
+      socket.to(socket.currentRoom).emit('receive_message', {
+        message: data.message,
+        isCEO: socket.isCEO
       });
+
+      const roomData = activeRooms[socket.currentRoom];
+      const userObj = roomData ? roomData.users.find(u => u.id === socket.id) : null;
+      const senderLabel = userObj ? userObj.label : (socket.isCEO ? "👑 CEO" : "Stranger");
+
+      const logEntry = {
+        roomId: socket.currentRoom,
+        sender: senderLabel,
+        msg: data.message
+      };
+
+      if (!adminLogs[socket.currentRoom]) adminLogs[socket.currentRoom] = [];
+      adminLogs[socket.currentRoom].push(logEntry);
+
+      io.to('admin_room').emit('admin_chat_log', logEntry);
     }
   });
 
@@ -508,11 +572,13 @@ function removeFromRoom(socket) {
     socket.to(socket.currentRoom).emit('stranger_left');
     socket.leave(socket.currentRoom);
     delete activeRooms[socket.currentRoom];
+    delete adminLogs[socket.currentRoom];
     socket.currentRoom = null;
   }
 }
 
 function broadcastAdminStats() {
+  const roomList = Object.keys(activeRooms).map(id => ({ id }));
   const queueData = waitingQueue.map(id => {
     const s = io.sockets.sockets.get(id);
     return { id: id, isCEO: s ? s.isCEO : false };
@@ -520,8 +586,8 @@ function broadcastAdminStats() {
 
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
-    roomCount: Object.keys(activeRooms).length,
-    rooms: Object.keys(activeRooms),
+    roomCount: roomList.length,
+    rooms: roomList,
     queue: queueData
   });
 }
