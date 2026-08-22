@@ -190,10 +190,11 @@ function renderApp(res, isCEO) {
 
         function openChatScreen() { 
           landingScreen.classList.add('hide'); 
-          clearChatHistory();
+          resetState();
         }
 
         function closeChatScreen() { 
+          socket.emit('leave_queue');
           if(isConnected) handleEndChat(); 
           else resetState();
           landingScreen.classList.remove('hide'); 
@@ -531,6 +532,11 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('leave_queue', () => {
+    waitingQueue = waitingQueue.filter((id) => id !== socket.id);
+    broadcastAdminStats();
+  });
+
   socket.on('find_partner', (data) => {
     socket.isCEO = data && data.isCEO;
 
@@ -603,6 +609,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('skip_chat', () => {
+    waitingQueue = waitingQueue.filter((id) => id !== socket.id);
     removeFromRoom(socket);
     broadcastAdminStats();
   });
