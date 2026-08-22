@@ -36,18 +36,18 @@ function renderApp(res, isCEO) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <title>Frendo - Anonymous Chat</title>
+      <title>Frendo - Premium Anonymous Chat</title>
       <script src="/socket.io/socket.io.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body { height: 100dvh; width: 100vw; overflow: hidden; background: #07090E; color: #fff; }
 
         #customToast {
           position: fixed; top: -70px; left: 50%; transform: translateX(-50%);
-          background: rgba(239, 68, 68, 0.95); backdrop-filter: blur(8px);
+          background: rgba(239, 68, 68, 0.95); backdrop-filter: blur(12px);
           color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold;
-          font-size: 13px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000;
+          font-size: 13px; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4); z-index: 1000;
           transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.2);
         }
@@ -55,80 +55,87 @@ function renderApp(res, isCEO) {
 
         #ceoToast {
           position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
-          background: linear-gradient(135deg, #EAB308, #CA8A04); backdrop-filter: blur(8px);
+          background: linear-gradient(135deg, #F59E0B, #D97706); backdrop-filter: blur(12px);
           color: #000; padding: 14px 28px; border-radius: 30px; font-weight: 900;
-          font-size: 15px; box-shadow: 0 10px 30px rgba(234, 179, 8, 0.8); z-index: 1001;
+          font-size: 14px; box-shadow: 0 10px 35px rgba(245, 158, 11, 0.6); z-index: 1001;
           transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          display: flex; align-items: center; gap: 8px; border: 2px solid #FFF; text-transform: uppercase;
+          display: flex; align-items: center; gap: 8px; border: 2px solid #FFF; text-transform: uppercase; letter-spacing: 1px;
         }
         #ceoToast.show { top: 25px; }
 
         .app-landing {
           width: 100vw; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-          padding: 40px 20px; background: radial-gradient(circle at top, #1E1B4B 0%, #0B0F19 80%); text-align: center;
+          padding: 50px 24px; background: radial-gradient(circle at 50% 20%, #1E1B4B 0%, #07090E 80%); text-align: center;
           position: absolute; top: 0; left: 0; z-index: 10; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .app-landing.hide { transform: translateY(-100%); }
 
-        .logo-circle {
-          width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #FACC15, #EC4899);
-          padding: 4px; box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); display: flex; align-items: center; justify-content: center; margin-top: 10px;
+        .logo-glow {
+          width: 115px; height: 115px; border-radius: 50%;
+          background: linear-gradient(135deg, #6366F1, #EC4899); padding: 3px;
+          box-shadow: 0 0 40px rgba(99, 102, 241, 0.5); display: flex; align-items: center; justify-content: center; margin-top: 10px;
         }
-        .logo-inner { width: 100%; height: 100%; background: #0B0F19; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .logo-text { font-size: 18px; font-weight: 900; letter-spacing: 2px; background: linear-gradient(135deg, #FACC15, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-inner { width: 100%; height: 100%; background: #07090E; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .logo-text { font-size: 20px; font-weight: 900; letter-spacing: 3px; background: linear-gradient(135deg, #818CF8, #F472B6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .app-title-section h1 { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-        .app-title-section p { font-size: 13px; color: #9CA3AF; max-width: 280px; margin: 0 auto; }
+        .app-title-section h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .app-title-section p { font-size: 14px; color: #9CA3AF; max-width: 290px; margin: 0 auto; line-height: 1.4; }
 
         .details-box {
-          background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 18px; padding: 16px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
+          background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px; padding: 18px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
-        .detail-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #D1D5DB; }
-        .detail-item span.val { font-weight: bold; color: #10B981; }
+        .detail-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #9CA3AF; font-weight: 500; }
+        .detail-item span.val { font-weight: 700; color: #34D399; }
 
         .btn-text-tab {
-          width: 100%; max-width: 320px; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #fff; border: none;
-          padding: 15px; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+          width: 100%; max-width: 320px; background: linear-gradient(135deg, #4F46E5, #3B82F6); color: #fff; border: none;
+          padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer;
+          box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); transition: transform 0.2s;
         }
+        .btn-text-tab:active { transform: scale(0.98); }
 
-        .chat-card { width: 100vw; height: 100dvh; background: #0B0F19; display: flex; flex-direction: column; position: relative; }
-        .header { padding: 12px 15px; background: #111827; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .btn-back { background: #1F2937; border: 1px solid #374151; color: #9CA3AF; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-right: 6px; }
+        .chat-card { width: 100vw; height: 100dvh; background: #07090E; display: flex; flex-direction: column; position: relative; }
+        .header { padding: 12px 18px; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
+        .btn-back { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9CA3AF; padding: 6px 12px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 600; margin-right: 10px; }
         
-        .online-badge { display: flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); padding: 4px 10px; border-radius: 20px; font-size: 12px; color: #10B981; font-weight: bold; }
-        .pulse-dot { width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; }
+        .online-badge { display: flex; align-items: center; gap: 6px; background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #34D399; font-weight: 700; }
+        .pulse-dot { width: 8px; height: 8px; background-color: #34D399; border-radius: 50%; box-shadow: 0 0 10px #34D399; }
 
-        .message-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0B0F19; }
-        .msg { padding: 10px 14px; border-radius: 14px; max-width: 80%; word-break: break-word; font-size: 14px; }
-        .msg.me { align-self: flex-end; background: #2563EB; color: #fff; border-bottom-right-radius: 2px; }
-        .msg.me-ceo { align-self: flex-end; background: linear-gradient(135deg, #EAB308, #CA8A04); color: #000; font-weight: bold; border-bottom-right-radius: 2px; }
-        .msg.stranger { align-self: flex-start; background: #1F2937; color: #fff; border-bottom-left-radius: 2px; }
-        .msg.ceo-msg { align-self: flex-start; background: linear-gradient(135deg, #EAB308, #CA8A04); color: #000; font-weight: bold; border-bottom-left-radius: 2px; border: 1px solid #FFF; }
+        .message-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: radial-gradient(circle at bottom, #0F172A 0%, #07090E 100%); }
+        .msg { padding: 12px 16px; border-radius: 18px; max-width: 80%; word-break: break-word; font-size: 14px; line-height: 1.4; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .msg.me { align-self: flex-end; background: linear-gradient(135deg, #3B82F6, #2563EB); color: #fff; border-bottom-right-radius: 4px; }
+        .msg.me-ceo { align-self: flex-end; background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: bold; border-bottom-right-radius: 4px; }
+        .msg.stranger { align-self: flex-start; background: #1E293B; color: #F3F4F6; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        .msg.ceo-msg { align-self: flex-start; background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: bold; border-bottom-left-radius: 4px; border: 1px solid #FFF; }
 
-        .action-bar { padding: 8px 15px; background: #111827; display: flex; gap: 8px; }
-        .btn-action { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-skip { background: #f59e0b; color: #000; }
-        .btn-end { background: #ef4444; color: #fff; }
-        .btn-start { background: #10b981; color: #fff; width: 100%; }
+        .action-bar { padding: 10px 18px; background: rgba(15, 23, 42, 0.9); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 10px; }
+        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 13px; transition: transform 0.1s; }
+        .btn-action:active { transform: scale(0.97); }
+        .btn-skip { background: #F59E0B; color: #000; }
+        .btn-end { background: #EF4444; color: #fff; }
+        .btn-start { background: #10B981; color: #fff; width: 100%; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
 
-        .input-area { padding: 10px 15px; background: #111827; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 8px; align-items: center; }
-        .input-area input { flex: 1; background: #1F2937; border: 1px solid #374151; border-radius: 10px; padding: 10px; color: #fff; outline: none; font-size: 15px; }
-        .send-btn { border: none; padding: 10px 14px; border-radius: 10px; font-weight: bold; cursor: pointer; background: #2563EB; color: #fff; }
+        .input-area { padding: 12px 18px; background: rgba(15, 23, 42, 0.9); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 10px; align-items: center; }
+        .input-area input { flex: 1; background: #1E293B; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; color: #fff; outline: none; font-size: 14px; transition: border 0.2s; }
+        .input-area input:focus { border-color: #3B82F6; }
+        .send-btn { border: none; padding: 12px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; background: #3B82F6; color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       </style>
     </head>
     <body>
 
       <div id="customToast"><span>⚠️ Stranger Disconnected!</span></div>
-      <div id="ceoToast"><span>👑 WOW! You connected with CEO! 👑</span></div>
+      <div id="ceoToast"><span>👑 WOW! Connected with CEO! 👑</span></div>
 
       <div id="landingScreen" class="app-landing">
         <div>
-          <div class="logo-circle"><div class="logo-inner"><span class="logo-text">FRENDO</span></div></div>
+          <div class="logo-glow"><div class="logo-inner"><span class="logo-text">FRENDO</span></div></div>
         </div>
         <div class="app-title-section">
-          <h1>Welcome to Frendo</h1>
-          <p>Connect with random strangers anonymously.</p>
+          <h1>Connect & Chat</h1>
+          <p>Talk with random strangers anonymously across the globe.</p>
         </div>
         <div class="details-box">
           <div class="detail-item"><span>Security</span><span class="val" style="color:#60A5FA;">🔒 Encrypted P2P</span></div>
@@ -143,7 +150,7 @@ function renderApp(res, isCEO) {
           <div style="display: flex; align-items: center;">
             <button class="btn-back" onclick="closeChatScreen()">⬅ Back</button>
             <div>
-              <h3>Frendo Chat ${isCEO ? '<span style="font-size:10px; background:#EAB308; color:#000; padding:2px 6px; border-radius:4px; margin-left:4px;">👑 CEO</span>' : ''}</h3>
+              <h3 style="font-size:15px; font-weight:700;">Frendo Chat ${isCEO ? '<span style="font-size:10px; background:#F59E0B; color:#000; padding:2px 6px; border-radius:4px; margin-left:4px; font-weight:900;">👑 CEO</span>' : ''}</h3>
               <span id="statusText" style="font-size: 11px; color: #9CA3AF;">Offline</span>
             </div>
           </div>
@@ -159,7 +166,7 @@ function renderApp(res, isCEO) {
         </div>
 
         <div class="input-area">
-          <input type="text" id="msgInput" placeholder="Connect first..." disabled />
+          <input type="text" id="msgInput" placeholder="Connect first to message..." disabled />
           <button id="sendBtn" class="send-btn" onclick="sendMessage()" disabled>Send</button>
         </div>
       </div>
@@ -182,8 +189,20 @@ function renderApp(res, isCEO) {
         const customToast = document.getElementById('customToast');
         const ceoToast = document.getElementById('ceoToast');
 
-        function openChatScreen() { landingScreen.classList.add('hide'); }
-        function closeChatScreen() { if(isConnected) handleEndChat(); landingScreen.classList.remove('hide'); }
+        function openChatScreen() { 
+          landingScreen.classList.add('hide'); 
+          clearChatHistory();
+        }
+
+        function closeChatScreen() { 
+          if(isConnected) handleEndChat(); 
+          else resetState();
+          landingScreen.classList.remove('hide'); 
+        }
+
+        function clearChatHistory() {
+          messageArea.innerHTML = '';
+        }
 
         socket.on('update_online_count', (count) => {
           onlineCountText.innerText = count + ' Online';
@@ -191,6 +210,7 @@ function renderApp(res, isCEO) {
         });
 
         function handleConnect() {
+          clearChatHistory();
           socket.emit('find_partner', { isCEO: IS_CEO });
           statusText.innerText = 'Searching...';
           startBtn.style.display = 'none';
@@ -198,8 +218,16 @@ function renderApp(res, isCEO) {
           endBtn.style.display = 'inline-block';
         }
 
-        function handleSkip() { socket.emit('skip_chat'); resetState(); handleConnect(); }
-        function handleEndChat() { socket.emit('skip_chat'); resetState(); }
+        function handleSkip() { 
+          socket.emit('skip_chat'); 
+          resetState(); 
+          handleConnect(); 
+        }
+        
+        function handleEndChat() { 
+          socket.emit('skip_chat'); 
+          resetState(); 
+        }
 
         function showToast(msg) {
           customToast.querySelector('span').innerText = msg;
@@ -215,7 +243,8 @@ function renderApp(res, isCEO) {
           endBtn.style.display = 'none';
           msgInput.disabled = true;
           sendBtn.disabled = true;
-          msgInput.placeholder = 'Connect first...';
+          msgInput.placeholder = 'Connect first to message...';
+          clearChatHistory();
         }
 
         socket.on('waiting', () => { statusText.innerText = 'Searching...'; });
@@ -226,21 +255,19 @@ function renderApp(res, isCEO) {
           msgInput.disabled = false;
           sendBtn.disabled = false;
           msgInput.placeholder = 'Type a message...';
-          messageArea.innerHTML = '';
+          clearChatHistory();
 
           if (data && data.hasCEO && !IS_CEO) {
             triggerCEOEntrance();
           }
         });
 
-        // Firework Sound Synthesizer via Web Audio API (Zero External File Delay)
         function playFireworkSound() {
           try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
-            // Rocket Whistle Sound
             osc.type = 'sine';
             osc.frequency.setValueAtTime(300, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.4);
@@ -254,7 +281,6 @@ function renderApp(res, isCEO) {
             osc.start();
             osc.stop(ctx.currentTime + 0.4);
 
-            // Explosion Boom Sound after 0.4 sec
             setTimeout(() => {
               const bufSize = ctx.sampleRate * 0.5;
               const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
@@ -281,7 +307,6 @@ function renderApp(res, isCEO) {
           } catch(e) { console.log(e); }
         }
 
-        // 5 Seconds Rocket Launch Fireworks with Audio
         function triggerCEOEntrance() {
           ceoToast.classList.add('show');
           setTimeout(() => { ceoToast.classList.remove('show'); }, 4000);
@@ -387,7 +412,7 @@ app.get('/admin', (req, res) => {
       </style>
     </head>
     <body>
-      <h2>⚡ Live Control Dashboard (Auto-Sync)</h2>
+      <h2>⚡ Live Control Dashboard (Auto Sync Active)</h2>
       
       <div class="stats">
         <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
@@ -427,11 +452,19 @@ app.get('/admin', (req, res) => {
         const socket = io();
         let selectedRoom = null;
 
-        function initAdmin() {
+        function authenticateAdmin() {
           socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
         }
-        initAdmin();
-        socket.on('connect', () => { initAdmin(); });
+
+        socket.on('connect', () => {
+          authenticateAdmin();
+        });
+
+        setInterval(() => {
+          if (socket.connected) {
+            socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
+          }
+        }, 1000);
 
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
@@ -653,5 +686,9 @@ function broadcastAdminStats() {
     queue: queueData
   });
 }
+
+setInterval(() => {
+  broadcastAdminStats();
+}, 1000);
 
 server.listen(PORT, HOST, () => console.log(`Server listening live on http://${HOST}:${PORT}`));
