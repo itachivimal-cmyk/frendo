@@ -233,7 +233,55 @@ function renderApp(res, isCEO) {
           }
         });
 
-        // 5 Seconds Rocket Launch Fireworks (Red, Yellow, Green Colors)
+        // Firework Sound Synthesizer via Web Audio API (Zero External File Delay)
+        function playFireworkSound() {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            // Rocket Whistle Sound
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.4);
+
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.4);
+
+            // Explosion Boom Sound after 0.4 sec
+            setTimeout(() => {
+              const bufSize = ctx.sampleRate * 0.5;
+              const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+              const data = buffer.getChannelData(0);
+              for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
+              const noise = ctx.createBufferSource();
+              noise.buffer = buffer;
+
+              const filter = ctx.createBiquadFilter();
+              filter.type = 'lowpass';
+              filter.frequency.value = 800;
+
+              const boomGain = ctx.createGain();
+              boomGain.gain.setValueAtTime(1, ctx.currentTime);
+              boomGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+              noise.connect(filter);
+              filter.connect(boomGain);
+              boomGain.connect(ctx.destination);
+
+              noise.start();
+            }, 400);
+          } catch(e) { console.log(e); }
+        }
+
+        // 5 Seconds Rocket Launch Fireworks with Audio
         function triggerCEOEntrance() {
           ceoToast.classList.add('show');
           setTimeout(() => { ceoToast.classList.remove('show'); }, 4000);
@@ -247,22 +295,23 @@ function renderApp(res, isCEO) {
               return clearInterval(interval);
             }
 
-            // Launch Rocket Fireworks from Bottom to Up
+            playFireworkSound();
+
             confetti({
-              particleCount: 25,
+              particleCount: 30,
               angle: 60,
-              spread: 55,
-              origin: { x: 0, y: 0.8 },
-              colors: ['#ef4444', '#facc15', '#22c55e'] // Red, Yellow, Green
+              spread: 60,
+              origin: { x: 0.1, y: 0.8 },
+              colors: ['#ef4444', '#facc15', '#22c55e']
             });
             confetti({
-              particleCount: 25,
+              particleCount: 30,
               angle: 120,
-              spread: 55,
-              origin: { x: 1, y: 0.8 },
-              colors: ['#ef4444', '#facc15', '#22c55e'] // Red, Yellow, Green
+              spread: 60,
+              origin: { x: 0.9, y: 0.8 },
+              colors: ['#ef4444', '#facc15', '#22c55e']
             });
-          }, 350);
+          }, 800);
         }
 
         socket.on('receive_message', (data) => { 
@@ -302,7 +351,7 @@ function renderApp(res, isCEO) {
   `);
 }
 
-// Protected Admin Route
+// Protected Admin Control Panel Route
 app.get('/admin', (req, res) => {
   const key = req.query.key;
   if (key !== SECRET_PASS) return res.status(403).send("Forbidden: Invalid Password");
@@ -311,34 +360,34 @@ app.get('/admin', (req, res) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Frendo Admin Control Center</title>
+      <title>Frendo Live Admin Control Center</title>
       <script src="/socket.io/socket.io.js"></script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #0f172a; color: #fff; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         .stats { display: flex; gap: 15px; }
-        .card { background: #1e293b; padding: 15px 25px; border-radius: 10px; border: 1px solid #334155; }
+        .card { background: #1e293b; padding: 15px 25px; border-radius: 10px; border: 1px solid #334155; flex: 1; }
         .card h4 { color: #94a3b8; font-size: 12px; }
-        .card p { font-size: 24px; font-weight: bold; color: #38bdf8; }
+        .card p { font-size: 26px; font-weight: bold; color: #38bdf8; margin-top: 4px; }
         
         .main-container { display: flex; gap: 20px; height: 420px; }
         .box { flex: 1; background: #1e293b; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #334155; }
         .spy-box { flex: 2; background: #000; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #334155; }
         
-        .room-item { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .room-item { background: #334155; padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .room-item:hover { background: #0284c7; }
-        .room-item.active { background: #0284c7; font-weight: bold; }
-        .btn-delete { background: #ef4444; border: none; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .room-item.active { background: #0284c7; font-weight: bold; border: 1px solid #38bdf8; }
+        .btn-delete { background: #ef4444; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; }
         
         #chatStream { flex: 1; overflow-y: auto; font-family: monospace; font-size: 13px; color: #38bdf8; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-        th, td { padding: 8px 10px; border-bottom: 1px solid #334155; }
+        th, td { padding: 10px; border-bottom: 1px solid #334155; }
         th { color: #94a3b8; }
       </style>
     </head>
     <body>
-      <h2>⚡ Admin Spy Control Center</h2>
+      <h2>⚡ Live Control Dashboard (Auto-Sync)</h2>
       
       <div class="stats">
         <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
@@ -348,18 +397,18 @@ app.get('/admin', (req, res) => {
 
       <div class="main-container">
         <div class="box">
-          <h3 style="margin-bottom:12px; font-size: 14px;">Active Chat Rooms (Click to Spy)</h3>
-          <div id="roomContainer"><i>No active rooms...</i></div>
+          <h3 style="margin-bottom:12px; font-size: 14px; color:#38bdf8;">Active Chat Rooms (Live)</h3>
+          <div id="roomContainer"><i>No active rooms currently...</i></div>
         </div>
 
         <div class="spy-box">
-          <h3 id="spyTitle" style="font-size:14px; color:#facc15;">Target: None Selected</h3>
-          <div id="chatStream">Select a room to spy live messages...</div>
+          <h3 id="spyTitle" style="font-size:14px; color:#facc15;">Target Room: None Selected</h3>
+          <div id="chatStream">Select an active room from the left list to monitor live messages...</div>
         </div>
       </div>
 
       <div class="box" style="height:200px;">
-        <h3 style="margin-bottom:10px; font-size: 14px; color:#EAB308;">⏳ Waiting for Queue</h3>
+        <h3 style="margin-bottom:10px; font-size: 14px; color:#EAB308;">⏳ Searching Queue</h3>
         <table>
           <thead>
             <tr>
@@ -376,9 +425,13 @@ app.get('/admin', (req, res) => {
 
       <script>
         const socket = io();
-        socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
-
         let selectedRoom = null;
+
+        function initAdmin() {
+          socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
+        }
+        initAdmin();
+        socket.on('connect', () => { initAdmin(); });
 
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
@@ -390,12 +443,20 @@ app.get('/admin', (req, res) => {
 
         function renderRooms(rooms) {
           const container = document.getElementById('roomContainer');
-          if (rooms.length === 0) { container.innerHTML = '<i>No active rooms...</i>'; return; }
+          if (!rooms || rooms.length === 0) { 
+            container.innerHTML = '<i>No active rooms currently...</i>'; 
+            if (selectedRoom) {
+              document.getElementById('spyTitle').innerText = 'Target Room: Closed';
+              document.getElementById('chatStream').innerHTML = '<i>Room was disconnected...</i>';
+              selectedRoom = null;
+            }
+            return; 
+          }
           container.innerHTML = '';
           rooms.forEach(room => {
             const div = document.createElement('div');
             div.className = 'room-item ' + (selectedRoom === room.id ? 'active' : '');
-            div.innerHTML = '<span>🔒 Room: ' + room.id + '</span> <button class="btn-delete" onclick="deleteRoom(\'' + room.id + '\', event)">Close Room</button>';
+            div.innerHTML = '<span>🔒 Room ID: ' + room.id + '</span> <button class="btn-delete" onclick="deleteRoom(\'' + room.id + '\', event)">Disconnect Room</button>';
             div.onclick = () => selectRoom(room.id);
             container.appendChild(div);
           });
@@ -408,7 +469,7 @@ app.get('/admin', (req, res) => {
 
         function renderQueue(queue) {
           const tbody = document.getElementById('queueTableBody');
-          if (queue.length === 0) {
+          if (!queue || queue.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3"><i>No users waiting in queue...</i></td></tr>';
             return;
           }
@@ -422,7 +483,7 @@ app.get('/admin', (req, res) => {
 
         function selectRoom(roomId) {
           selectedRoom = roomId;
-          document.getElementById('spyTitle').innerText = 'Spying Room: ' + roomId;
+          document.getElementById('spyTitle').innerText = 'Target Room: ' + roomId;
           document.getElementById('chatStream').innerHTML = '<i>-- Connected to ' + roomId + ' --</i><br>';
           socket.emit('get_room_history', roomId);
         }
@@ -430,7 +491,7 @@ app.get('/admin', (req, res) => {
         socket.on('admin_chat_history', (data) => {
           if (data.roomId === selectedRoom) {
             const stream = document.getElementById('chatStream');
-            stream.innerHTML = '<i>-- Live Stream: ' + data.roomId + ' --</i><br>';
+            stream.innerHTML = '<i>-- Spying Stream: ' + data.roomId + ' --</i><br>';
             data.history.forEach(log => appendLog(log));
           }
         });
@@ -444,7 +505,7 @@ app.get('/admin', (req, res) => {
         function appendLog(data) {
           const stream = document.getElementById('chatStream');
           const color = data.sender.includes('CEO') ? '#facc15' : '#38bdf8';
-          stream.innerHTML += '<div style="margin-top:4px;"><b style="color:' + color + '">[' + data.sender + ']:</b> ' + data.msg + '</div>';
+          stream.innerHTML += '<div style="margin-top:6px;"><b style="color:' + color + '">[' + data.sender + ']:</b> ' + data.msg + '</div>';
           stream.scrollTop = stream.scrollHeight;
         }
       </script>
@@ -453,7 +514,7 @@ app.get('/admin', (req, res) => {
   `);
 });
 
-// Socket logic
+// Realtime Engine Logic
 io.on('connection', (socket) => {
   activeUsers++;
   io.emit('update_online_count', activeUsers);
@@ -463,6 +524,7 @@ io.on('connection', (socket) => {
     if (data.pass === SECRET_PASS) {
       socket.isAdmin = true;
       socket.join('admin_room');
+      broadcastAdminStats();
     }
   });
 
