@@ -9,25 +9,22 @@ const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
 
-// Secret Passwords
 const SECRET_PASS = "xiaoqi143@";
 
 let activeUsers = 0;
-let waitingQueue = [];
+let waitingQueue = []; // Holds socket IDs
 let activeRooms = {}; 
 
 app.use(express.json());
 
-// Main App Route (Normal User)
 app.get('/', (req, res) => { renderApp(res, false); });
 
-// Secret CEO Entrance Route (Protected with Password)
 app.get('/ceo', (req, res) => { 
   const pass = req.query.pass;
   if (pass === SECRET_PASS) {
     renderApp(res, true); 
   } else {
-    renderApp(res, false); // Wrong/No pass means Normal User Mode
+    renderApp(res, false);
   }
 });
 
@@ -286,6 +283,10 @@ function renderApp(res, isCEO) {
           messageArea.appendChild(div);
           messageArea.scrollTop = messageArea.scrollHeight;
         }
+
+        msgInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') sendMessage();
+        });
       </script>
     </body>
     </html>
@@ -424,7 +425,7 @@ app.get('/admin', (req, res) => {
   `);
 });
 
-// Socket logic
+// Socket logic with optimized Queue Matchmaking
 io.on('connection', (socket) => {
   activeUsers++;
   io.emit('update_online_count', activeUsers);
@@ -440,22 +441,38 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     socket.isCEO = data && data.isCEO;
 
+    // Clean broken sockets from waitingQueue
+    waitingQueue = waitingQueue.filter(id => {
+      const s = io.sockets.sockets.get(id);
+      return s && s.connected && !s.currentRoom;
+    });
+
+    // Remove current socket if already in queue to prevent duplicate matching
+    waitingQueue = waitingQueue.filter(id => id !== socket.id);
+
     if (waitingQueue.length > 0) {
-      const partner = waitingQueue.pop();
-      const roomId = `room_${socket.id.substring(0, 4)}_${partner.id.substring(0, 4)}`;
-      const hasCEO = socket.isCEO || partner.isCEO;
+      const partnerId = waitingQueue.shift();
+      const partner = io.sockets.sockets.get(partnerId);
 
-      socket.join(roomId);
-      partner.join(roomId);
-      socket.currentRoom = roomId;
-      partner.currentRoom = roomId;
+      if (partner && partner.connected) {
+        const roomId = `room_${socket.id.substring(0, 4)}_${partner.id.substring(0, 4)}`;
+        const hasCEO = socket.isCEO || partner.isCEO;
 
-      activeRooms[roomId] = true;
+        socket.join(roomId);
+        partner.join(roomId);
+        socket.currentRoom = roomId;
+        partner.currentRoom = roomId;
 
-      socket.emit('chat_start', { hasCEO });
-      partner.emit('chat_start', { hasCEO });
+        activeRooms[roomId] = true;
+
+        socket.emit('chat_start', { hasCEO });
+        partner.emit('chat_start', { hasCEO });
+      } else {
+        waitingQueue.push(socket.id);
+        socket.emit('waiting');
+      }
     } else {
-      waitingQueue.push({ id: socket.id, socket: socket, isCEO: socket.isCEO });
+      waitingQueue.push(socket.id);
       socket.emit('waiting');
     }
     broadcastAdminStats();
@@ -473,33 +490,39 @@ io.on('connection', (socket) => {
   });
 
   socket.on('skip_chat', () => {
-    if (socket.currentRoom) {
-      socket.to(socket.currentRoom).emit('stranger_left');
-      socket.leave(socket.currentRoom);
-      delete activeRooms[socket.currentRoom];
-      socket.currentRoom = null;
-    }
+    removeFromRoom(socket);
     broadcastAdminStats();
   });
 
   socket.on('disconnect', () => {
     activeUsers = Math.max(0, activeUsers - 1);
     io.emit('update_online_count', activeUsers);
-    waitingQueue = waitingQueue.filter((item) => item.id !== socket.id);
-    if (socket.currentRoom) {
-      socket.to(socket.currentRoom).emit('stranger_left');
-      delete activeRooms[socket.currentRoom];
-    }
+    waitingQueue = waitingQueue.filter((id) => id !== socket.id);
+    removeFromRoom(socket);
     broadcastAdminStats();
   });
 });
 
+function removeFromRoom(socket) {
+  if (socket.currentRoom) {
+    socket.to(socket.currentRoom).emit('stranger_left');
+    socket.leave(socket.currentRoom);
+    delete activeRooms[socket.currentRoom];
+    socket.currentRoom = null;
+  }
+}
+
 function broadcastAdminStats() {
+  const queueData = waitingQueue.map(id => {
+    const s = io.sockets.sockets.get(id);
+    return { id: id, isCEO: s ? s.isCEO : false };
+  });
+
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
     roomCount: Object.keys(activeRooms).length,
     rooms: Object.keys(activeRooms),
-    queue: waitingQueue.map(item => ({ id: item.id, isCEO: item.isCEO }))
+    queue: queueData
   });
 }
 
