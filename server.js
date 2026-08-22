@@ -16,6 +16,27 @@ let waitingQueue = [];
 let activeRooms = {}; 
 let adminLogs = {}; 
 
+// --- DAILY ANALYTICS DATA STORE ---
+let analytics = {
+  date: new Date().toDateString(),
+  todayTotal: 0,
+  mobileUsers: 0,
+  desktopUsers: 0,
+  visitedIPs: new Set()
+};
+
+// Midnight Reset Logic for Daily Stats
+function checkDailyReset() {
+  const currentDate = new Date().toDateString();
+  if (analytics.date !== currentDate) {
+    analytics.date = currentDate;
+    analytics.todayTotal = 0;
+    analytics.mobileUsers = 0;
+    analytics.desktopUsers = 0;
+    analytics.visitedIPs.clear();
+  }
+}
+
 app.use(express.json());
 
 app.get('/', (req, res) => { renderApp(res, false); });
@@ -174,6 +195,10 @@ function renderApp(res, isCEO) {
         const socket = io();
         const IS_CEO = ${isCEO};
         let isConnected = false;
+
+        // Detect Mobile User
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        socket.emit('device_type', { isMobile: isMobileDevice });
 
         const landingScreen = document.getElementById('landingScreen');
         const landingOnlineCount = document.getElementById('landingOnlineCount');
@@ -344,8 +369,8 @@ app.get('/admin', (req, res) => {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #F8FAFC; color: #0F172A; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .stats { display: flex; gap: 15px; }
-        .card { background: #FFFFFF; padding: 15px 25px; border-radius: 10px; border: 1px solid #E2E8F0; flex: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .stats { display: flex; gap: 15px; flex-wrap: wrap; }
+        .card { background: #FFFFFF; padding: 15px 25px; border-radius: 10px; border: 1px solid #E2E8F0; flex: 1; min-width: 180px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
         .card h4 { color: #64748B; font-size: 12px; }
         .card p { font-size: 26px; font-weight: bold; color: #2563EB; margin-top: 4px; }
         
@@ -370,6 +395,9 @@ app.get('/admin', (req, res) => {
       
       <div class="stats">
         <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
+        <div class="card"><h4>TODAY VISITORS</h4><p id="tVisitors" style="color:#10B981;">0</p></div>
+        <div class="card"><h4>📱 MOBILE USERS</h4><p id="mUsers" style="color:#8B5CF6;">0</p></div>
+        <div class="card"><h4>💻 DESKTOP USERS</h4><p id="dUsers" style="color:#3B82F6;">0</p></div>
         <div class="card"><h4>ACTIVE ROOMS</h4><p id="rCount">0</p></div>
         <div class="card"><h4>WAITING IN QUEUE</h4><p id="qCount" style="color:#D97706;">0</p></div>
       </div>
@@ -422,6 +450,9 @@ app.get('/admin', (req, res) => {
 
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
+          document.getElementById('tVisitors').innerText = data.analytics.todayTotal;
+          document.getElementById('mUsers').innerText = data.analytics.mobileUsers;
+          document.getElementById('dUsers').innerText = data.analytics.desktopUsers;
           document.getElementById('rCount').innerText = data.roomCount;
           document.getElementById('qCount').innerText = data.queue.length;
           renderRooms(data.rooms);
@@ -504,9 +535,26 @@ app.get('/admin', (req, res) => {
 
 // Realtime Engine Logic
 io.on('connection', (socket) => {
+  checkDailyReset();
   activeUsers++;
+
+  const userIP = socket.handshake.address;
+  if (!analytics.visitedIPs.has(userIP)) {
+    analytics.visitedIPs.add(userIP);
+    analytics.todayTotal++;
+  }
+
   io.emit('update_online_count', activeUsers);
   broadcastAdminStats();
+
+  socket.on('device_type', (data) => {
+    if (data.isMobile) {
+      analytics.mobileUsers++;
+    } else {
+      analytics.desktopUsers++;
+    }
+    broadcastAdminStats();
+  });
 
   socket.on('admin_auth', (data) => {
     if (data.pass === SECRET_PASS) {
@@ -642,6 +690,11 @@ function broadcastAdminStats() {
 
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
+    analytics: {
+      todayTotal: analytics.todayTotal,
+      mobileUsers: analytics.mobileUsers,
+      desktopUsers: analytics.desktopUsers
+    },
     roomCount: roomList.length,
     rooms: roomList,
     queue: queueData
