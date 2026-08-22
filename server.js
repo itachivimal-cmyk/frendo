@@ -8,10 +8,15 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 10000;
 const HOST = '0.0.0.0';
+const ADMIN_PASS = "frendo_super_admin_2026";
 
 let activeUsers = 0;
 let waitingQueue = [];
+let activeRooms = {}; 
 
+app.use(express.json());
+
+// Main App Route with CEO Mode Landing Page
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -33,18 +38,18 @@ app.get('/', (req, res) => {
         .app-landing.hide { transform: translateY(-100%); }
 
         .logo-circle {
-          width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #FACC15, #EC4899);
-          padding: 4px; box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); display: flex; align-items: center; justify-content: center; margin-top: 20px;
+          width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #FACC15, #EC4899);
+          padding: 4px; box-shadow: 0 0 30px rgba(236, 72, 153, 0.5); display: flex; align-items: center; justify-content: center; margin-top: 10px;
         }
         .logo-inner { width: 100%; height: 100%; background: #0B0F19; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .logo-text { font-size: 20px; font-weight: 900; letter-spacing: 2px; background: linear-gradient(135deg, #FACC15, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-text { font-size: 18px; font-weight: 900; letter-spacing: 2px; background: linear-gradient(135deg, #FACC15, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .app-title-section h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-        .app-title-section p { font-size: 13px; color: #9CA3AF; max-width: 280px; margin: 0 auto; line-height: 1.5; }
+        .app-title-section h1 { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+        .app-title-section p { font-size: 13px; color: #9CA3AF; max-width: 280px; margin: 0 auto; }
 
         .details-box {
           background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 18px; padding: 18px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
+          border-radius: 18px; padding: 16px; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px;
         }
         .detail-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #D1D5DB; }
         .detail-item span.val { font-weight: bold; color: #10B981; }
@@ -88,11 +93,11 @@ app.get('/', (req, res) => {
           <p>Connect with random strangers anonymously.</p>
         </div>
         <div class="details-box">
-          <div class="detail-item"><span>Server Status</span><span class="val">🟢 Online</span></div>
+          <div class="detail-item"><span>App Mode</span><span class="val" style="color:#FACC15;">👑 CEO Mode Active</span></div>
+          <div class="detail-item"><span>Server Status</span><span class="val">🟢 Live</span></div>
           <div class="detail-item"><span>Active Users</span><span class="val" id="landingOnlineCount">0 Online</span></div>
-          <div class="detail-item"><span>Privacy</span><span style="color: #60A5FA;">100% Anonymous</span></div>
         </div>
-        <button class="btn-text-tab" onclick="openChatScreen()">💬 TEXT CHAT</button>
+        <button class="btn-text-tab" onclick="openChatScreen()">💬 START CHATTING</button>
       </div>
 
       <div class="chat-card">
@@ -202,18 +207,142 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Advanced Scalable Admin Route
+app.get('/admin', (req, res) => {
+  const key = req.query.key;
+  if (key !== ADMIN_PASS) return res.status(403).send("Forbidden");
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Frendo Admin Control Center</title>
+      <script src="/socket.io/socket.io.js"></script>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background: #0f172a; color: #fff; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .stats { display: flex; gap: 15px; }
+        .card { background: #1e293b; padding: 15px 25px; border-radius: 10px; border: 1px solid #334155; }
+        .card h4 { color: #94a3b8; font-size: 12px; }
+        .card p { font-size: 24px; font-weight: bold; color: #38bdf8; }
+        
+        .main-container { display: flex; gap: 20px; height: 500px; }
+        .room-list-box { flex: 1; background: #1e293b; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #334155; }
+        .spy-box { flex: 2; background: #000; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #334155; }
+        
+        .room-item { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; }
+        .room-item:hover { background: #0284c7; }
+        .room-item.active { background: #0284c7; font-weight: bold; }
+        
+        #chatStream { flex: 1; overflow-y: auto; font-family: monospace; font-size: 13px; color: #22c55e; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
+        .toggle-btn { background: #ef4444; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .toggle-btn.on { background: #22c55e; }
+      </style>
+    </head>
+    <body>
+      <h2>⚡ Scalable Admin Control Center</h2>
+      
+      <div class="stats">
+        <div class="card"><h4>ONLINE USERS</h4><p id="uCount">0</p></div>
+        <div class="card"><h4>ACTIVE ROOMS</h4><p id="rCount">0</p></div>
+        <div class="card"><h4>GLOBAL STREAM</h4>
+          <button id="streamToggle" class="toggle-btn" onclick="toggleGlobalStream()">OFF (Safe Mode)</button>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <div class="room-list-box">
+          <h3 style="margin-bottom:12px; font-size: 15px;">Active Chat Rooms (Click to Spy)</h3>
+          <div id="roomContainer"><i>No active rooms right now...</i></div>
+        </div>
+
+        <div class="spy-box">
+          <h3 id="spyTitle">Target: None Selected</h3>
+          <div id="chatStream">Select a room from the left side to monitor live chats...</div>
+        </div>
+      </div>
+
+      <script>
+        const socket = io();
+        socket.emit('admin_auth', { pass: "${ADMIN_PASS}" });
+
+        let selectedRoom = null;
+        let globalStreamOn = false;
+
+        socket.on('admin_stats_update', (data) => {
+          document.getElementById('uCount').innerText = data.activeUsers;
+          document.getElementById('rCount').innerText = data.roomCount;
+          renderRooms(data.rooms);
+        });
+
+        function renderRooms(rooms) {
+          const container = document.getElementById('roomContainer');
+          if (rooms.length === 0) {
+            container.innerHTML = '<i>No active rooms...</i>';
+            return;
+          }
+          container.innerHTML = '';
+          rooms.forEach(roomId => {
+            const div = document.createElement('div');
+            div.className = 'room-item ' + (selectedRoom === roomId ? 'active' : '');
+            div.innerText = '🔒 ' + roomId;
+            div.onclick = () => selectRoom(roomId);
+            container.appendChild(div);
+          });
+        }
+
+        function selectRoom(roomId) {
+          selectedRoom = roomId;
+          document.getElementById('spyTitle').innerText = 'Spying Target: ' + roomId;
+          document.getElementById('chatStream').innerHTML = '<i>-- Connected to ' + roomId + ' --</i><br>';
+          socket.emit('set_spy_target', roomId);
+        }
+
+        function toggleGlobalStream() {
+          globalStreamOn = !globalStreamOn;
+          const btn = document.getElementById('streamToggle');
+          btn.innerText = globalStreamOn ? 'ON (High Traffic Risk)' : 'OFF (Safe Mode)';
+          btn.className = 'toggle-btn ' + (globalStreamOn ? 'on' : '');
+          socket.emit('set_global_stream', globalStreamOn);
+        }
+
+        socket.on('admin_chat_log', (data) => {
+          if (data.roomId === selectedRoom || globalStreamOn) {
+            const stream = document.getElementById('chatStream');
+            stream.innerHTML += '<div><b>[' + data.roomId + ']:</b> ' + data.msg + '</div>';
+            stream.scrollTop = stream.scrollHeight;
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// Socket logic
 io.on('connection', (socket) => {
   activeUsers++;
   io.emit('update_online_count', activeUsers);
+  broadcastAdminStats();
+
+  socket.on('admin_auth', (data) => {
+    if (data.pass === ADMIN_PASS) {
+      socket.isAdmin = true;
+      socket.join('admin_room');
+    }
+  });
 
   socket.on('find_partner', () => {
     if (waitingQueue.length > 0) {
       const partner = waitingQueue.pop();
-      const room = `room_${socket.id}_${partner.id}`;
-      socket.join(room);
-      partner.join(room);
-      socket.currentRoom = room;
-      partner.currentRoom = room;
+      const roomId = `room_${socket.id.substring(0, 4)}_${partner.id.substring(0, 4)}`;
+      
+      socket.join(roomId);
+      partner.join(roomId);
+      socket.currentRoom = roomId;
+      partner.currentRoom = roomId;
+
+      activeRooms[roomId] = true;
 
       socket.emit('chat_start');
       partner.emit('chat_start');
@@ -221,11 +350,17 @@ io.on('connection', (socket) => {
       waitingQueue.push(socket);
       socket.emit('waiting');
     }
+    broadcastAdminStats();
   });
 
   socket.on('send_message', (data) => {
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('receive_message', data);
+      
+      io.to('admin_room').emit('admin_chat_log', {
+        roomId: socket.currentRoom,
+        msg: data.message
+      });
     }
   });
 
@@ -233,8 +368,10 @@ io.on('connection', (socket) => {
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('stranger_left');
       socket.leave(socket.currentRoom);
+      delete activeRooms[socket.currentRoom];
       socket.currentRoom = null;
     }
+    broadcastAdminStats();
   });
 
   socket.on('disconnect', () => {
@@ -243,10 +380,18 @@ io.on('connection', (socket) => {
     waitingQueue = waitingQueue.filter((s) => s.id !== socket.id);
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('stranger_left');
+      delete activeRooms[socket.currentRoom];
     }
+    broadcastAdminStats();
   });
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`Server listening live on http://${HOST}:${PORT}`);
-});
+function broadcastAdminStats() {
+  io.to('admin_room').emit('admin_stats_update', {
+    activeUsers,
+    roomCount: Object.keys(activeRooms).length,
+    rooms: Object.keys(activeRooms)
+  });
+}
+
+server.listen(PORT, HOST, () => console.log(`Server listening live on http://${HOST}:${PORT}`));
