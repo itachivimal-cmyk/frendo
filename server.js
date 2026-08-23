@@ -16,6 +16,7 @@ let waitingQueueText = [];
 let waitingQueueVideo = [];
 let activeRooms = {};
 let reportsList = [];
+let liveChatLogs = [];
 
 let analytics = {
   date: new Date().toDateString(),
@@ -54,7 +55,7 @@ function renderApp(res, isCEO) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <title>Frendo - 1-on-1 Chat & Video</title>
+      <title>Frendo - Live Anonymous Chat</title>
       <script src="/socket.io/socket.io.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -84,6 +85,16 @@ function renderApp(res, isCEO) {
           width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
           cursor: pointer; font-size: 14px; flex-shrink: 0;
         }
+
+        /* Animated Disconnect Toast */
+        .animated-toast {
+          position: fixed; top: -60px; left: 50%; transform: translateX(-50%);
+          background: rgba(239, 68, 68, 0.95); color: white; padding: 10px 20px; border-radius: 30px;
+          font-size: 12px; font-weight: bold; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+          z-index: 1000; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          display: flex; align-items: center; gap: 8px; backdrop-filter: blur(8px);
+        }
+        .animated-toast.show { top: 15px; }
 
         .app-landing {
           width: 100vw; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -140,7 +151,8 @@ function renderApp(res, isCEO) {
     </head>
     <body>
 
-      <!-- LANDING PAGE -->
+      <div id="toast" class="animated-toast">⚠️ Stranger Disconnected</div>
+
       <div id="landingScreen" class="app-landing">
         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 12px; font-weight: bold; color: #10B981;">🟢 Live 1-on-1 Chat</span>
@@ -161,7 +173,6 @@ function renderApp(res, isCEO) {
         <div style="font-size: 12px; color: var(--subtext-color);" id="landingOnlineText">0 Users Online</div>
       </div>
 
-      <!-- CHAT INTERFACE -->
       <div class="chat-card">
         <div class="header">
           <button class="btn-back" onclick="closeChatScreen()">⬅ Back</button>
@@ -205,6 +216,13 @@ function renderApp(res, isCEO) {
         let localStream = null;
         let peerConnection = null;
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        function showToast(msg) {
+          const t = document.getElementById('toast');
+          t.innerText = msg;
+          t.classList.add('show');
+          setTimeout(() => t.classList.remove('show'), 2500);
+        }
 
         function toggleTheme() {
           document.body.classList.toggle('light-theme');
@@ -274,7 +292,7 @@ function renderApp(res, isCEO) {
         function handleReport() {
           if (confirm('Report/Block partner?')) {
             socket.emit('report_or_block', { type: 'REPORT' });
-            alert('User reported.');
+            showToast('🚨 User Reported');
             handleSkip();
           }
         }
@@ -362,7 +380,7 @@ function renderApp(res, isCEO) {
 
         socket.on('stranger_left', () => { 
           if(peerConnection) peerConnection.close();
-          alert('Stranger left chat.');
+          showToast('⚠️ Stranger Disconnected');
           resetState(); 
         });
 
@@ -407,43 +425,117 @@ function renderApp(res, isCEO) {
   res.send(htmlContent);
 }
 
-// Admin Control Dashboard
+// Professional CEO Live Surveillance Control Center
 app.get('/admin', (req, res) => {
   const key = req.query.key;
-  if (key !== SECRET_PASS) return res.status(403).send("Forbidden");
+  if (key !== SECRET_PASS) return res.status(403).send("Forbidden Access");
 
   const adminHtml = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Frendo Dashboard</title>
+      <title>Frendo CEO Surveillance Control</title>
       <script src="/socket.io/socket.io.js"></script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background: #0F172A; color: #FFF; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
+        body { background: #0B0F19; color: #E2E8F0; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+        
+        .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 12px; }
+        
         .stats { display: flex; gap: 10px; flex-wrap: wrap; }
-        .card { background: #1E293B; padding: 12px; border-radius: 8px; flex: 1; border: 1px solid #334155; }
-        .card h4 { color: #94A3B8; font-size: 11px; }
-        .card p { font-size: 20px; font-weight: bold; color: #38BDF8; margin-top: 4px; }
+        .card { background: #151D2A; padding: 12px 16px; border-radius: 10px; flex: 1; border: 1px solid #1E293B; }
+        .card h4 { color: #64748B; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .card p { font-size: 22px; font-weight: 800; color: #38BDF8; margin-top: 4px; }
+        
+        .grid-container { display: flex; gap: 16px; height: 600px; }
+        .panel { flex: 1; background: #151D2A; border-radius: 12px; border: 1px solid #1E293B; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header { background: #1E293B; padding: 10px 14px; font-size: 13px; font-weight: bold; color: #F8FAFC; display: flex; justify-content: space-between; }
+        .panel-body { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        
+        .chat-log { background: #0B0F19; border: 1px solid #1E293B; padding: 8px 10px; border-radius: 8px; font-size: 12px; color: #CBD5E1; }
+        .chat-log .room-tag { color: #38BDF8; font-weight: bold; font-size: 10px; margin-bottom: 2px; }
+        .room-card { background: #0B0F19; border: 1px solid #1E293B; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        .btn-kick { background: #EF4444; border: none; color: white; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: bold; }
       </style>
     </head>
     <body>
-      <h2>⚡ Live System Status</h2>
+      <div class="header-bar">
+        <h2>⚡ CEO Live Surveillance Console</h2>
+        <span style="font-size:12px; color:#10B981;">● System Health: Optimal</span>
+      </div>
+
       <div class="stats">
         <div class="card"><h4>ONLINE</h4><p id="uCount">0</p></div>
-        <div class="card"><h4>VISITORS</h4><p id="tVisitors" style="color:#10B981;">0</p></div>
-        <div class="card"><h4>TEXT MODE</h4><p id="textUsers" style="color:#3B82F6;">0</p></div>
-        <div class="card"><h4>VIDEO MODE</h4><p id="videoUsers" style="color:#A855F7;">0</p></div>
+        <div class="card"><h4>VISITORS TODAY</h4><p id="tVisitors" style="color:#10B981;">0</p></div>
+        <div class="card"><h4>TEXT ROOMS</h4><p id="textUsers" style="color:#3B82F6;">0</p></div>
+        <div class="card"><h4>VIDEO ROOMS</h4><p id="videoUsers" style="color:#A855F7;">0</p></div>
       </div>
+
+      <div class="grid-container">
+        <div class="panel">
+          <div class="panel-header"><span>🎥 Live Active Rooms</span></div>
+          <div class="panel-body" id="roomsContainer"><i>No active sessions...</i></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><span>💬 Intercepted Live Chat Logs</span></div>
+          <div class="panel-body" id="logsContainer"><i>Monitoring chat traffic...</i></div>
+        </div>
+      </div>
+
       <script>
         const socket = io();
-        socket.on('connect', () => { socket.emit('admin_auth', { pass: "${SECRET_PASS}" }); });
+
+        socket.on('connect', () => {
+          socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
+        });
+
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
           document.getElementById('tVisitors').innerText = data.analytics.todayTotal;
           document.getElementById('textUsers').innerText = data.analytics.textModeUsers;
           document.getElementById('videoUsers').innerText = data.analytics.videoModeUsers;
+          
+          renderRooms(data.rooms);
+          renderLogs(data.liveLogs);
         });
+
+        function renderRooms(rooms) {
+          const c = document.getElementById('roomsContainer');
+          if(!rooms || rooms.length === 0) { c.innerHTML = '<i>No active sessions...</i>'; return; }
+          c.innerHTML = '';
+          rooms.forEach(r => {
+            c.innerHTML += \`
+              <div class="room-card">
+                <div>
+                  <strong>\${r.mode === 'video' ? '📹 Video' : '💬 Text'} Room</strong>
+                  <div style="font-size:10px; color:#64748B;">ID: \${r.id}</div>
+                </div>
+                <button class="btn-kick" onclick="forceTerminate('\${r.id}')">Kick Room</button>
+              </div>
+            \`;
+          });
+        }
+
+        function renderLogs(logs) {
+          const c = document.getElementById('logsContainer');
+          if(!logs || logs.length === 0) return;
+          c.innerHTML = '';
+          logs.slice(-30).reverse().forEach(l => {
+            c.innerHTML += \`
+              <div class="chat-log">
+                <div class="room-tag">[\${l.time}] Room: \${l.room}</div>
+                <div>\${l.msg}</div>
+              </div>
+            \`;
+          });
+        }
+
+        function forceTerminate(roomId) {
+          if(confirm('Terminate ' + roomId + '?')) {
+            socket.emit('admin_terminate_room', { roomId });
+          }
+        }
       </script>
     </body>
     </html>
@@ -451,7 +543,7 @@ app.get('/admin', (req, res) => {
   res.send(adminHtml);
 });
 
-// Socket.io Realtime Engine
+// Socket Engine logic
 io.on('connection', (socket) => {
   checkDailyReset();
   activeUsers++;
@@ -476,9 +568,13 @@ io.on('connection', (socket) => {
     broadcastAdminStats();
   });
 
-  socket.on('report_or_block', (data) => {
-    reportsList.push({ type: data.type, room: socket.currentRoom || 'N/A' });
-    broadcastAdminStats();
+  socket.on('admin_terminate_room', (data) => {
+    const room = activeRooms[data.roomId];
+    if (room) {
+      io.to(data.roomId).emit('stranger_left');
+      delete activeRooms[data.roomId];
+      broadcastAdminStats();
+    }
   });
 
   socket.on('leave_queue', () => {
@@ -490,7 +586,7 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     const mode = data.mode || 'text';
     socket.userMode = mode;
-    recalculateModeCounts();
+    removeFromRoom(socket); // Ensure previous clean slate
 
     let queue = mode === 'video' ? waitingQueueVideo : waitingQueueText;
     queue = queue.filter(id => id !== socket.id);
@@ -521,6 +617,7 @@ io.on('connection', (socket) => {
     if (mode === 'video') waitingQueueVideo = queue;
     else waitingQueueText = queue;
 
+    recalculateModeCounts();
     broadcastAdminStats();
   });
 
@@ -531,6 +628,12 @@ io.on('connection', (socket) => {
   socket.on('send_message', (data) => {
     if (socket.currentRoom) {
       socket.to(socket.currentRoom).emit('receive_message', { message: data.message });
+      liveChatLogs.push({
+        room: socket.currentRoom,
+        msg: data.message,
+        time: new Date().toLocaleTimeString()
+      });
+      broadcastAdminStats();
     }
   });
 
@@ -567,14 +670,18 @@ function removeFromRoom(socket) {
 }
 
 function broadcastAdminStats() {
+  const roomList = Object.keys(activeRooms).map(id => ({ id, mode: activeRooms[id].mode }));
+
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
     analytics: {
       todayTotal: analytics.todayTotal,
       textModeUsers: analytics.textModeUsers,
       videoModeUsers: analytics.videoModeUsers
-    }
+    },
+    rooms: roomList,
+    liveLogs: liveChatLogs
   });
 }
 
-server.listen(PORT, HOST, () => console.log(`Server listening live on http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`Server running on http://${HOST}:${PORT}`));
