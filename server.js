@@ -17,6 +17,7 @@ let waitingQueueVideo = [];
 let activeRooms = {};
 let reportsList = [];
 let liveChatLogs = [];
+let bannedIPs = new Set();
 
 let analytics = {
   date: new Date().toDateString(),
@@ -36,6 +37,15 @@ function checkDailyReset() {
 }
 
 app.use(express.json());
+
+// IP Ban Middleware Guard
+app.use((req, res, next) => {
+  const userIP = req.ip || req.connection.remoteAddress;
+  if (bannedIPs.has(userIP)) {
+    return res.status(403).send('<h1 style="color:red; text-align:center; margin-top:50px;">🚫 Access Denied: Your IP has been temporarily banned by System Admin.</h1>');
+  }
+  next();
+});
 
 app.get('/', (req, res) => { renderApp(res, false); });
 
@@ -86,7 +96,6 @@ function renderApp(res, isCEO) {
           cursor: pointer; font-size: 14px; flex-shrink: 0;
         }
 
-        /* Animated Disconnect Toast */
         .animated-toast {
           position: fixed; top: -60px; left: 50%; transform: translateX(-50%);
           background: rgba(239, 68, 68, 0.95); color: white; padding: 10px 20px; border-radius: 30px;
@@ -127,9 +136,6 @@ function renderApp(res, isCEO) {
         .video-wrapper.active { display: flex; align-items: center; justify-content: center; }
         #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
         #localVideo { position: absolute; bottom: 12px; right: 12px; width: 100px; height: 140px; object-fit: cover; border-radius: 12px; border: 2px solid #38BDF8; background: #1E293B; z-index: 10; }
-        
-        .video-controls { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; z-index: 20; }
-        .icon-btn { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #FFF; padding: 6px 10px; border-radius: 15px; font-size: 11px; cursor: pointer; }
 
         .message-area { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: var(--bg-color); }
         .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 13px; }
@@ -155,7 +161,7 @@ function renderApp(res, isCEO) {
 
       <div id="landingScreen" class="app-landing">
         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 12px; font-weight: bold; color: #10B981;">🟢 Live 1-on-1 Chat</span>
+          <span style="font-size: 12px; font-weight: bold; color: #10B981;">🟢 Live Anonymous Chat</span>
           <button class="theme-toggle" onclick="toggleTheme()" id="themeBtnLanding">☀️</button>
         </div>
 
@@ -185,10 +191,6 @@ function renderApp(res, isCEO) {
         </div>
 
         <div class="video-wrapper" id="videoWrapper">
-          <div class="video-controls">
-            <button class="icon-btn" onclick="toggleMuteAudio()" id="micBtn">🎙️ Mic</button>
-            <button class="icon-btn" onclick="toggleMuteVideo()" id="camBtn">📹 Cam</button>
-          </div>
           <video id="remoteVideo" autoplay playsinline></video>
           <video id="localVideo" autoplay playsinline muted></video>
         </div>
@@ -251,9 +253,7 @@ function renderApp(res, isCEO) {
           try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
-          } catch (err) {
-            alert('Camera & Mic access required.');
-          }
+          } catch (err) { alert('Camera access required.'); }
         }
 
         function closeChatScreen() { 
@@ -265,14 +265,8 @@ function renderApp(res, isCEO) {
         }
 
         function stopVideoTracks() {
-          if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-          }
-          if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-          }
+          if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+          if (peerConnection) { peerConnection.close(); peerConnection = null; }
         }
 
         socket.on('update_online_count', (count) => {
@@ -290,9 +284,10 @@ function renderApp(res, isCEO) {
         }
 
         function handleReport() {
-          if (confirm('Report/Block partner?')) {
-            socket.emit('report_or_block', { type: 'REPORT' });
-            showToast('🚨 User Reported');
+          const reason = prompt('Reason for reporting partner:');
+          if (reason) {
+            socket.emit('report_partner', { reason });
+            showToast('🚨 Report submitted to CEO Panel');
             handleSkip();
           }
         }
@@ -353,15 +348,12 @@ function renderApp(res, isCEO) {
           };
 
           peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              socket.emit('signal', { candidate: event.candidate });
-            }
+            if (event.candidate) socket.emit('signal', { candidate: event.candidate });
           };
         }
 
         socket.on('signal', async (data) => {
           if (!peerConnection) createPeerConnection();
-
           if (data.offer) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await peerConnection.createAnswer();
@@ -374,9 +366,7 @@ function renderApp(res, isCEO) {
           }
         });
 
-        socket.on('receive_message', (data) => { 
-          addMessage(data.message, 'stranger'); 
-        });
+        socket.on('receive_message', (data) => { addMessage(data.message, 'stranger'); });
 
         socket.on('stranger_left', () => { 
           if(peerConnection) peerConnection.close();
@@ -402,22 +392,6 @@ function renderApp(res, isCEO) {
           area.appendChild(div);
           area.scrollTop = area.scrollHeight;
         }
-
-        function toggleMuteAudio() {
-          if (localStream) {
-            const audioTrack = localStream.getAudioTracks()[0];
-            audioTrack.enabled = !audioTrack.enabled;
-            document.getElementById('micBtn').innerText = audioTrack.enabled ? '🎙️ Mic' : '🎙️ Muted';
-          }
-        }
-
-        function toggleMuteVideo() {
-          if (localStream) {
-            const videoTrack = localStream.getVideoTracks()[0];
-            videoTrack.enabled = !videoTrack.enabled;
-            document.getElementById('camBtn').innerText = videoTrack.enabled ? '📹 Cam' : '📹 Off';
-          }
-        }
       </script>
     </body>
     </html>
@@ -425,7 +399,7 @@ function renderApp(res, isCEO) {
   res.send(htmlContent);
 }
 
-// Professional CEO Live Surveillance Control Center
+// Advanced CEO Surveillance Control Center
 app.get('/admin', (req, res) => {
   const key = req.query.key;
   if (key !== SECRET_PASS) return res.status(403).send("Forbidden Access");
@@ -447,15 +421,23 @@ app.get('/admin', (req, res) => {
         .card h4 { color: #64748B; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .card p { font-size: 22px; font-weight: 800; color: #38BDF8; margin-top: 4px; }
         
-        .grid-container { display: flex; gap: 16px; height: 600px; }
+        .grid-container { display: flex; gap: 16px; height: 500px; }
         .panel { flex: 1; background: #151D2A; border-radius: 12px; border: 1px solid #1E293B; display: flex; flex-direction: column; overflow: hidden; }
-        .panel-header { background: #1E293B; padding: 10px 14px; font-size: 13px; font-weight: bold; color: #F8FAFC; display: flex; justify-content: space-between; }
+        .panel-header { background: #1E293B; padding: 10px 14px; font-size: 13px; font-weight: bold; color: #F8FAFC; display: flex; justify-content: space-between; align-items: center; }
         .panel-body { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         
+        .btn-sm { background: #EF4444; border: none; color: white; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-clear { background: #64748B; }
+        .btn-ban { background: #DC2626; }
+
         .chat-log { background: #0B0F19; border: 1px solid #1E293B; padding: 8px 10px; border-radius: 8px; font-size: 12px; color: #CBD5E1; }
-        .chat-log .room-tag { color: #38BDF8; font-weight: bold; font-size: 10px; margin-bottom: 2px; }
-        .room-card { background: #0B0F19; border: 1px solid #1E293B; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-        .btn-kick { background: #EF4444; border: none; color: white; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: bold; }
+        .room-card { background: #0B0F19; border: 1px solid #1E293B; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .room-card:hover, .room-card.selected { border-color: #38BDF8; background: #111C2E; }
+        
+        .user1 { color: #38BDF8; font-weight: bold; }
+        .user2 { color: #F472B6; font-weight: bold; }
+
+        .report-card { background: #2A1215; border: 1px solid #991B1B; padding: 10px; border-radius: 8px; font-size: 12px; color: #FCA5A5; }
       </style>
     </head>
     <body>
@@ -472,19 +454,32 @@ app.get('/admin', (req, res) => {
       </div>
 
       <div class="grid-container">
+        <!-- Room Selector Panel -->
         <div class="panel">
           <div class="panel-header"><span>🎥 Live Active Rooms</span></div>
           <div class="panel-body" id="roomsContainer"><i>No active sessions...</i></div>
         </div>
 
+        <!-- Filtered Selected Room Messages -->
         <div class="panel">
-          <div class="panel-header"><span>💬 Intercepted Live Chat Logs</span></div>
-          <div class="panel-body" id="logsContainer"><i>Monitoring chat traffic...</i></div>
+          <div class="panel-header">
+            <span id="selectedRoomTitle">💬 Selected Room Monitor</span>
+            <button class="btn-sm btn-clear" onclick="clearLogs()">Clear Logs</button>
+          </div>
+          <div class="panel-body" id="logsContainer"><i>Click on any Room to monitor chat messages...</i></div>
+        </div>
+
+        <!-- Dedicated User Reports Panel -->
+        <div class="panel">
+          <div class="panel-header"><span>🚨 User Reports & Evidence</span></div>
+          <div class="panel-body" id="reportsContainer"><i>No abuse reports...</i></div>
         </div>
       </div>
 
       <script>
         const socket = io();
+        let selectedRoomId = null;
+        let allLogs = [];
 
         socket.on('connect', () => {
           socket.emit('admin_auth', { pass: "${SECRET_PASS}" });
@@ -496,45 +491,88 @@ app.get('/admin', (req, res) => {
           document.getElementById('textUsers').innerText = data.analytics.textModeUsers;
           document.getElementById('videoUsers').innerText = data.analytics.videoModeUsers;
           
+          allLogs = data.liveLogs || [];
           renderRooms(data.rooms);
-          renderLogs(data.liveLogs);
+          renderFilteredLogs();
+          renderReports(data.reports);
         });
+
+        function selectRoom(roomId) {
+          selectedRoomId = roomId;
+          document.getElementById('selectedRoomTitle').innerText = '💬 Monitoring: ' + roomId;
+          renderFilteredLogs();
+        }
 
         function renderRooms(rooms) {
           const c = document.getElementById('roomsContainer');
           if(!rooms || rooms.length === 0) { c.innerHTML = '<i>No active sessions...</i>'; return; }
           c.innerHTML = '';
           rooms.forEach(r => {
+            const isSel = selectedRoomId === r.id ? 'selected' : '';
             c.innerHTML += \`
-              <div class="room-card">
+              <div class="room-card \${isSel}" onclick="selectRoom('\${r.id}')">
                 <div>
                   <strong>\${r.mode === 'video' ? '📹 Video' : '💬 Text'} Room</strong>
                   <div style="font-size:10px; color:#64748B;">ID: \${r.id}</div>
                 </div>
-                <button class="btn-kick" onclick="forceTerminate('\${r.id}')">Kick Room</button>
+                <button class="btn-sm" onclick="event.stopPropagation(); forceTerminate('\${r.id}')">Kick</button>
               </div>
             \`;
           });
         }
 
-        function renderLogs(logs) {
+        function renderFilteredLogs() {
           const c = document.getElementById('logsContainer');
-          if(!logs || logs.length === 0) return;
+          if(!selectedRoomId) { c.innerHTML = '<i>Click on an active room to stream messages...</i>'; return; }
+          
+          const filtered = allLogs.filter(l => l.room === selectedRoomId);
+          if(filtered.length === 0) { c.innerHTML = '<i>No messages exchanged yet in ' + selectedRoomId + '...</i>'; return; }
+
           c.innerHTML = '';
-          logs.slice(-30).reverse().forEach(l => {
+          filtered.forEach(l => {
+            const uTag = l.sender === 'User 1' ? '<span class="user1">[User 1]</span>' : '<span class="user2">[User 2]</span>';
             c.innerHTML += \`
               <div class="chat-log">
-                <div class="room-tag">[\${l.time}] Room: \${l.room}</div>
-                <div>\${l.msg}</div>
+                <div>\${uTag} <small style="color:#64748B;">(\${l.time})</small>: \${l.msg}</div>
+              </div>
+            \`;
+          });
+        }
+
+        function renderReports(reports) {
+          const c = document.getElementById('reportsContainer');
+          if(!reports || reports.length === 0) { c.innerHTML = '<i>No pending reports...</i>'; return; }
+          c.innerHTML = '';
+          reports.forEach(r => {
+            c.innerHTML += \`
+              <div class="report-card">
+                <div><strong>Room:</strong> \${r.room}</div>
+                <div><strong>Reason:</strong> \${r.reason}</div>
+                <div><strong>Time:</strong> \${r.time}</div>
+                <div style="margin-top:6px;">
+                  <button class="btn-sm btn-ban" onclick="banUser('\${r.targetIP}')">Temp Ban IP</button>
+                </div>
               </div>
             \`;
           });
         }
 
         function forceTerminate(roomId) {
-          if(confirm('Terminate ' + roomId + '?')) {
+          if(confirm('Disconnect ' + roomId + '?')) {
             socket.emit('admin_terminate_room', { roomId });
           }
+        }
+
+        function banUser(ip) {
+          if(confirm('Block access for IP: ' + ip + '?')) {
+            socket.emit('admin_ban_ip', { ip });
+          }
+        }
+
+        function clearLogs() {
+          allLogs = [];
+          socket.emit('admin_clear_logs');
+          renderFilteredLogs();
         }
       </script>
     </body>
@@ -568,6 +606,18 @@ io.on('connection', (socket) => {
     broadcastAdminStats();
   });
 
+  socket.on('admin_clear_logs', () => {
+    liveChatLogs = [];
+    broadcastAdminStats();
+  });
+
+  socket.on('admin_ban_ip', (data) => {
+    if (data.ip) {
+      bannedIPs.add(data.ip);
+      broadcastAdminStats();
+    }
+  });
+
   socket.on('admin_terminate_room', (data) => {
     const room = activeRooms[data.roomId];
     if (room) {
@@ -586,7 +636,7 @@ io.on('connection', (socket) => {
   socket.on('find_partner', (data) => {
     const mode = data.mode || 'text';
     socket.userMode = mode;
-    removeFromRoom(socket); // Ensure previous clean slate
+    removeFromRoom(socket);
 
     let queue = mode === 'video' ? waitingQueueVideo : waitingQueueText;
     queue = queue.filter(id => id !== socket.id);
@@ -602,6 +652,9 @@ io.on('connection', (socket) => {
         partner.join(roomId);
         socket.currentRoom = roomId;
         partner.currentRoom = roomId;
+
+        socket.userTag = "User 1";
+        partner.userTag = "User 2";
 
         activeRooms[roomId] = { mode, users: [socket.id, partner.id] };
 
@@ -630,7 +683,20 @@ io.on('connection', (socket) => {
       socket.to(socket.currentRoom).emit('receive_message', { message: data.message });
       liveChatLogs.push({
         room: socket.currentRoom,
+        sender: socket.userTag || "User 1",
         msg: data.message,
+        time: new Date().toLocaleTimeString()
+      });
+      broadcastAdminStats();
+    }
+  });
+
+  socket.on('report_partner', (data) => {
+    if (socket.currentRoom) {
+      reportsList.push({
+        room: socket.currentRoom,
+        reason: data.reason || 'Abusive behavior',
+        targetIP: socket.handshake.address,
         time: new Date().toLocaleTimeString()
       });
       broadcastAdminStats();
@@ -680,7 +746,8 @@ function broadcastAdminStats() {
       videoModeUsers: analytics.videoModeUsers
     },
     rooms: roomList,
-    liveLogs: liveChatLogs
+    liveLogs: liveChatLogs,
+    reports: reportsList
   });
 }
 
