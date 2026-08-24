@@ -75,7 +75,7 @@ function renderApp(res, isCEO) {
           --text-color: #F8FAFC;
           --subtext-color: #94A3B8;
           --border-color: #334155;
-          --input-bg: #0F172A;
+          --input-bg: rgba(15, 23, 42, 0.7);
         }
 
         body.light-theme {
@@ -84,15 +84,15 @@ function renderApp(res, isCEO) {
           --text-color: #0F172A;
           --subtext-color: #64748B;
           --border-color: #E2E8F0;
-          --input-bg: #F1F5F9;
+          --input-bg: rgba(255, 255, 255, 0.85);
         }
 
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background: var(--bg-color); color: var(--text-color); }
 
         .theme-toggle {
-          background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color);
+          background: rgba(30, 41, 59, 0.8); border: 1px solid var(--border-color); color: var(--text-color);
           width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          cursor: pointer; font-size: 14px; flex-shrink: 0;
+          cursor: pointer; font-size: 14px; flex-shrink: 0; backdrop-filter: blur(8px);
         }
 
         .animated-toast {
@@ -128,18 +128,28 @@ function renderApp(res, isCEO) {
         .btn-mode-video { background: linear-gradient(135deg, #7C3AED, #6D28D9); }
 
         .chat-card { width: 100vw; height: 100dvh; background: var(--bg-color); display: flex; flex-direction: column; position: relative; }
-        .header { padding: 10px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
-        .btn-back { background: var(--border-color); border: none; color: var(--text-color); padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
         
-        /* 50/50 Split View Styles */
+        .header { 
+          padding: 10px 14px; 
+          background: rgba(15, 23, 42, 0.7); 
+          border-bottom: 1px solid rgba(255,255,255,0.1); 
+          display: flex; justify-content: space-between; align-items: center; 
+          z-index: 20; 
+          position: absolute; top: 0; left: 0; width: 100%;
+          backdrop-filter: blur(10px);
+        }
+        .btn-back { background: rgba(255,255,255,0.15); border: none; color: #FFF; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); }
+        
+        /* FULLSCREEN 50/50 Split View Layout */
         .video-wrapper { 
-          height: 45vh; 
+          position: absolute;
+          top: 0; left: 0;
+          width: 100vw; 
+          height: 100dvh; 
           background: #000; 
           display: none; 
-          width: 100%; 
           flex-direction: column;
-          gap: 2px;
-          border-bottom: 2px solid var(--border-color);
+          z-index: 1;
         }
         .video-wrapper.active { display: flex; }
         
@@ -151,6 +161,7 @@ function renderApp(res, isCEO) {
           display: flex; 
           align-items: center; 
           justify-content: center; 
+          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         }
         .video-box video { 
           width: 100%; 
@@ -159,8 +170,8 @@ function renderApp(res, isCEO) {
         }
         .video-label { 
           position: absolute; 
-          bottom: 8px; 
-          left: 8px; 
+          top: 10px; 
+          left: 10px; 
           background: rgba(0,0,0,0.6); 
           color: white; 
           padding: 3px 8px; 
@@ -172,23 +183,53 @@ function renderApp(res, isCEO) {
         }
 
         @media (min-width: 768px) {
-          .video-wrapper { flex-direction: row; height: 55vh; }
+          .video-wrapper { flex-direction: row; }
+          .video-box { border-bottom: none; border-right: 1px solid rgba(255, 255, 255, 0.15); }
         }
 
-        .message-area { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: var(--bg-color); }
-        .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 13px; }
-        .msg.me { align-self: flex-end; background: #2563EB; color: #fff; border-bottom-right-radius: 2px; }
-        .msg.stranger { align-self: flex-start; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-bottom-left-radius: 2px; }
+        /* Overlay Chat UI over Video */
+        .chat-overlay-container {
+          position: absolute;
+          bottom: 0; left: 0; width: 100%;
+          display: flex; flex-direction: column;
+          z-index: 10;
+          pointer-events: none;
+          padding-bottom: 10px;
+        }
 
-        .action-bar { padding: 10px 14px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; gap: 8px; }
-        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 13px; color: #FFF; }
-        .btn-skip { background: #F59E0B; }
-        .btn-end { background: #EF4444; }
-        .btn-start { background: #10B981; width: 100%; }
+        .message-area { 
+          height: 220px; 
+          padding: 12px; 
+          overflow-y: auto; 
+          display: flex; 
+          flex-direction: column; 
+          gap: 8px; 
+          pointer-events: auto;
+          mask-image: linear-gradient(to bottom, transparent, black 20%);
+        }
+        .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 13px; backdrop-filter: blur(10px); }
+        .msg.me { align-self: flex-end; background: rgba(37, 99, 235, 0.85); color: #fff; border-bottom-right-radius: 2px; }
+        .msg.stranger { align-self: flex-start; background: rgba(30, 41, 59, 0.85); color: #FFF; border: 1px solid rgba(255,255,255,0.1); border-bottom-left-radius: 2px; }
 
-        .input-area { padding: 10px 14px; background: var(--card-bg); border-top: 1px solid var(--border-color); display: flex; gap: 8px; }
-        .input-area input { flex: 1; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; color: var(--text-color); outline: none; font-size: 13px; }
-        .send-btn { border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; background: #2563EB; color: #fff; }
+        .action-bar { padding: 8px 14px; display: flex; gap: 8px; pointer-events: auto; }
+        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 13px; color: #FFF; backdrop-filter: blur(4px); }
+        .btn-skip { background: rgba(245, 158, 11, 0.9); }
+        .btn-end { background: rgba(239, 68, 68, 0.9); }
+        .btn-start { background: rgba(16, 185, 129, 0.9); width: 100%; }
+
+        .input-area { padding: 8px 14px; display: flex; gap: 8px; pointer-events: auto; }
+        .input-area input { 
+          flex: 1; 
+          background: var(--input-bg); 
+          border: 1px solid rgba(255, 255, 255, 0.2); 
+          border-radius: 10px; 
+          padding: 12px; 
+          color: #FFF; 
+          outline: none; 
+          font-size: 13px; 
+          backdrop-filter: blur(10px); 
+        }
+        .send-btn { border: none; padding: 12px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; background: #2563EB; color: #fff; }
         
         .report-link { font-size: 11px; color: #EF4444; cursor: pointer; text-decoration: underline; margin-left: 6px; }
       </style>
@@ -221,14 +262,14 @@ function renderApp(res, isCEO) {
         <div class="header">
           <button class="btn-back" onclick="closeChatScreen()">⬅ Back</button>
           <div style="text-align: center;">
-            <h3 id="modeTitle" style="font-size:13px; font-weight:700;">Frendo Chat</h3>
-            <span id="statusText" style="font-size: 11px; color: var(--subtext-color);">Offline</span>
+            <h3 id="modeTitle" style="font-size:13px; font-weight:700; color: #FFF;">Frendo Chat</h3>
+            <span id="statusText" style="font-size: 11px; color: #94A3B8;">Offline</span>
             <span id="reportBtnHeader" class="report-link" onclick="handleReport()" style="display:none;">Report</span>
           </div>
           <button class="theme-toggle" onclick="toggleTheme()" id="themeBtnChat">☀️</button>
         </div>
 
-        <!-- Split Video Container -->
+        <!-- Fullscreen Split Video Wrapper -->
         <div class="video-wrapper" id="videoWrapper">
           <div class="video-box">
             <span class="video-label">Stranger</span>
@@ -240,17 +281,20 @@ function renderApp(res, isCEO) {
           </div>
         </div>
 
-        <div class="message-area" id="messageArea"></div>
+        <!-- Overlay UI elements -->
+        <div class="chat-overlay-container">
+          <div class="message-area" id="messageArea"></div>
 
-        <div class="action-bar">
-          <button id="startBtn" class="btn-action btn-start" onclick="handleConnect()">Start Chat</button>
-          <button id="skipBtn" class="btn-action btn-skip" onclick="handleSkip()" style="display: none;">⏩ Next</button>
-          <button id="endBtn" class="btn-action btn-end" onclick="handleEndChat()" style="display: none;">❌ Stop</button>
-        </div>
+          <div class="action-bar">
+            <button id="startBtn" class="btn-action btn-start" onclick="handleConnect()">Start Chat</button>
+            <button id="skipBtn" class="btn-action btn-skip" onclick="handleSkip()" style="display: none;">⏩ Next</button>
+            <button id="endBtn" class="btn-action btn-end" onclick="handleEndChat()" style="display: none;">❌ Stop</button>
+          </div>
 
-        <div class="input-area">
-          <input type="text" id="msgInput" placeholder="Connect first..." disabled />
-          <button id="sendBtn" class="send-btn" onclick="sendMessage()" disabled>Send</button>
+          <div class="input-area">
+            <input type="text" id="msgInput" placeholder="Connect first..." disabled />
+            <button id="sendBtn" class="send-btn" onclick="sendMessage()" disabled>Send</button>
+          </div>
         </div>
       </div>
 
