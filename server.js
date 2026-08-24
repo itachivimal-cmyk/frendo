@@ -38,11 +38,10 @@ function checkDailyReset() {
 
 app.use(express.json());
 
-// IP Ban Middleware Guard
 app.use((req, res, next) => {
   const userIP = req.ip || req.connection.remoteAddress;
   if (bannedIPs.has(userIP)) {
-    return res.status(403).send('<h1 style="color:red; text-align:center; margin-top:50px;">🚫 Access Denied: Your IP has been temporarily banned by System Admin.</h1>');
+    return res.status(403).send('<h1 style="color:red; text-align:center; margin-top:50px;">🚫 Access Denied: Your IP has been banned.</h1>');
   }
   next();
 });
@@ -132,10 +131,49 @@ function renderApp(res, isCEO) {
         .header { padding: 10px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
         .btn-back { background: var(--border-color); border: none; color: var(--text-color); padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
         
-        .video-wrapper { flex: 1; position: relative; background: #000; display: none; width: 100%; height: 100%; overflow: hidden; }
-        .video-wrapper.active { display: flex; align-items: center; justify-content: center; }
-        #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
-        #localVideo { position: absolute; bottom: 12px; right: 12px; width: 100px; height: 140px; object-fit: cover; border-radius: 12px; border: 2px solid #38BDF8; background: #1E293B; z-index: 10; }
+        /* 50/50 Split View Styles */
+        .video-wrapper { 
+          height: 45vh; 
+          background: #000; 
+          display: none; 
+          width: 100%; 
+          flex-direction: column;
+          gap: 2px;
+          border-bottom: 2px solid var(--border-color);
+        }
+        .video-wrapper.active { display: flex; }
+        
+        .video-box { 
+          flex: 1; 
+          position: relative; 
+          background: #111827; 
+          overflow: hidden; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+        }
+        .video-box video { 
+          width: 100%; 
+          height: 100%; 
+          object-fit: cover; 
+        }
+        .video-label { 
+          position: absolute; 
+          bottom: 8px; 
+          left: 8px; 
+          background: rgba(0,0,0,0.6); 
+          color: white; 
+          padding: 3px 8px; 
+          border-radius: 6px; 
+          font-size: 10px; 
+          font-weight: bold; 
+          backdrop-filter: blur(4px); 
+          z-index: 5;
+        }
+
+        @media (min-width: 768px) {
+          .video-wrapper { flex-direction: row; height: 55vh; }
+        }
 
         .message-area { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: var(--bg-color); }
         .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 13px; }
@@ -190,9 +228,16 @@ function renderApp(res, isCEO) {
           <button class="theme-toggle" onclick="toggleTheme()" id="themeBtnChat">☀️</button>
         </div>
 
+        <!-- Split Video Container -->
         <div class="video-wrapper" id="videoWrapper">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="video-box">
+            <span class="video-label">Stranger</span>
+            <video id="remoteVideo" autoplay playsinline></video>
+          </div>
+          <div class="video-box">
+            <span class="video-label">You</span>
+            <video id="localVideo" autoplay playsinline muted></video>
+          </div>
         </div>
 
         <div class="message-area" id="messageArea"></div>
@@ -287,7 +332,7 @@ function renderApp(res, isCEO) {
           const reason = prompt('Reason for reporting partner:');
           if (reason) {
             socket.emit('report_partner', { reason });
-            showToast('🚨 Report submitted to CEO Panel');
+            showToast('🚨 Report submitted');
             handleSkip();
           }
         }
@@ -454,13 +499,11 @@ app.get('/admin', (req, res) => {
       </div>
 
       <div class="grid-container">
-        <!-- Room Selector Panel -->
         <div class="panel">
           <div class="panel-header"><span>🎥 Live Active Rooms</span></div>
           <div class="panel-body" id="roomsContainer"><i>No active sessions...</i></div>
         </div>
 
-        <!-- Filtered Selected Room Messages -->
         <div class="panel">
           <div class="panel-header">
             <span id="selectedRoomTitle">💬 Selected Room Monitor</span>
@@ -469,10 +512,9 @@ app.get('/admin', (req, res) => {
           <div class="panel-body" id="logsContainer"><i>Click on any Room to monitor chat messages...</i></div>
         </div>
 
-        <!-- Dedicated User Reports Panel -->
         <div class="panel">
           <div class="panel-header"><span>🚨 User Reports & Evidence</span></div>
-          <div class="panel-body" id="reportsContainer"><i>No abuse reports...</i></div>
+          <div class="panel-body" id="reportsContainer"><i>No pending reports...</i></div>
         </div>
       </div>
 
@@ -581,7 +623,6 @@ app.get('/admin', (req, res) => {
   res.send(adminHtml);
 });
 
-// Socket Engine logic
 io.on('connection', (socket) => {
   checkDailyReset();
   activeUsers++;
