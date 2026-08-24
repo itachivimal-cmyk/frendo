@@ -36,6 +36,18 @@ function checkDailyReset() {
   }
 }
 
+// Device detection helper
+function getDeviceInfo(userAgent) {
+  if (!userAgent) return 'Unknown Device';
+  if (/iphone/i.test(userAgent)) return '📱 iPhone';
+  if (/ipad/i.test(userAgent)) return '📱 iPad';
+  if (/android/i.test(userAgent)) return '📱 Android';
+  if (/macintosh/i.test(userAgent)) return '💻 Mac Desktop';
+  if (/windows/i.test(userAgent)) return '💻 Windows PC';
+  if (/linux/i.test(userAgent)) return '💻 Linux PC';
+  return '🌐 Web Device';
+}
+
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -75,7 +87,9 @@ function renderApp(res, isCEO) {
           --text-color: #F8FAFC;
           --subtext-color: #94A3B8;
           --border-color: #334155;
-          --input-bg: rgba(15, 23, 42, 0.7);
+          --input-bg: #1E293B;
+          --input-text: #FFFFFF;
+          --input-placeholder: #94A3B8;
         }
 
         body.light-theme {
@@ -83,8 +97,10 @@ function renderApp(res, isCEO) {
           --card-bg: #FFFFFF;
           --text-color: #0F172A;
           --subtext-color: #64748B;
-          --border-color: #E2E8F0;
-          --input-bg: rgba(255, 255, 255, 0.85);
+          --border-color: #CBD5E1;
+          --input-bg: #E2E8F0;
+          --input-text: #0F172A;
+          --input-placeholder: #64748B;
         }
 
         html, body { height: 100dvh; width: 100vw; overflow: hidden; background: var(--bg-color); color: var(--text-color); }
@@ -114,7 +130,7 @@ function renderApp(res, isCEO) {
         .logo-glow {
           width: 85px; height: 85px; border-radius: 50%;
           background: linear-gradient(135deg, #2563EB, #4F46E5); padding: 3px;
-          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; margin-top: 10px;
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;
         }
         .logo-inner { width: 100%; height: 100%; background: var(--bg-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
         .logo-text { font-size: 16px; font-weight: 900; letter-spacing: 2px; background: linear-gradient(135deg, #38BDF8, #818CF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -131,14 +147,14 @@ function renderApp(res, isCEO) {
         
         .header { 
           padding: 10px 14px; 
-          background: rgba(15, 23, 42, 0.7); 
+          background: rgba(15, 23, 42, 0.85); 
           border-bottom: 1px solid rgba(255,255,255,0.1); 
           display: flex; justify-content: space-between; align-items: center; 
           z-index: 20; 
           position: absolute; top: 0; left: 0; width: 100%;
           backdrop-filter: blur(10px);
         }
-        .btn-back { background: rgba(255,255,255,0.15); border: none; color: #FFF; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); }
+        .btn-back { background: rgba(255,255,255,0.2); border: none; color: #FFF; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); }
         
         /* FULLSCREEN 50/50 Split View Layout */
         .video-wrapper { 
@@ -170,13 +186,13 @@ function renderApp(res, isCEO) {
         }
         .video-label { 
           position: absolute; 
-          top: 10px; 
-          left: 10px; 
-          background: rgba(0,0,0,0.6); 
+          top: 50px; 
+          left: 14px; 
+          background: rgba(0,0,0,0.65); 
           color: white; 
-          padding: 3px 8px; 
+          padding: 4px 10px; 
           border-radius: 6px; 
-          font-size: 10px; 
+          font-size: 11px; 
           font-weight: bold; 
           backdrop-filter: blur(4px); 
           z-index: 5;
@@ -187,49 +203,53 @@ function renderApp(res, isCEO) {
           .video-box { border-bottom: none; border-right: 1px solid rgba(255, 255, 255, 0.15); }
         }
 
-        /* Overlay Chat UI over Video */
         .chat-overlay-container {
           position: absolute;
           bottom: 0; left: 0; width: 100%;
+          height: 100dvh;
           display: flex; flex-direction: column;
+          justify-content: flex-end;
           z-index: 10;
-          pointer-events: none;
+          padding-top: 60px;
           padding-bottom: 10px;
+          pointer-events: none;
         }
 
         .message-area { 
-          height: 220px; 
-          padding: 12px; 
+          flex: 1; 
+          padding: 14px; 
           overflow-y: auto; 
           display: flex; 
           flex-direction: column; 
-          gap: 8px; 
+          gap: 10px; 
           pointer-events: auto;
-          mask-image: linear-gradient(to bottom, transparent, black 20%);
         }
-        .msg { padding: 8px 12px; border-radius: 12px; max-width: 80%; word-break: break-word; font-size: 13px; backdrop-filter: blur(10px); }
-        .msg.me { align-self: flex-end; background: rgba(37, 99, 235, 0.85); color: #fff; border-bottom-right-radius: 2px; }
-        .msg.stranger { align-self: flex-start; background: rgba(30, 41, 59, 0.85); color: #FFF; border: 1px solid rgba(255,255,255,0.1); border-bottom-left-radius: 2px; }
+        
+        .msg { padding: 10px 14px; border-radius: 14px; max-width: 80%; word-break: break-word; font-size: 14px; font-weight: 500; line-height: 1.4; }
+        .msg.me { align-self: flex-end; background: #2563EB; color: #FFFFFF; border-bottom-right-radius: 2px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .msg.stranger { align-self: flex-start; background: rgba(30, 41, 59, 0.95); color: #F8FAFC; border: 1px solid rgba(255,255,255,0.15); border-bottom-left-radius: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
 
-        .action-bar { padding: 8px 14px; display: flex; gap: 8px; pointer-events: auto; }
-        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 13px; color: #FFF; backdrop-filter: blur(4px); }
-        .btn-skip { background: rgba(245, 158, 11, 0.9); }
-        .btn-end { background: rgba(239, 68, 68, 0.9); }
-        .btn-start { background: rgba(16, 185, 129, 0.9); width: 100%; }
+        .action-bar { padding: 6px 14px; display: flex; gap: 8px; pointer-events: auto; }
+        .btn-action { flex: 1; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px; color: #FFF; backdrop-filter: blur(4px); }
+        .btn-skip { background: #F59E0B; }
+        .btn-end { background: #EF4444; }
+        .btn-start { background: #10B981; width: 100%; }
 
         .input-area { padding: 8px 14px; display: flex; gap: 8px; pointer-events: auto; }
         .input-area input { 
           flex: 1; 
           background: var(--input-bg); 
-          border: 1px solid rgba(255, 255, 255, 0.2); 
-          border-radius: 10px; 
-          padding: 12px; 
-          color: #FFF; 
+          border: 1.5px solid var(--border-color); 
+          border-radius: 12px; 
+          padding: 14px; 
+          color: var(--input-text) !important; 
           outline: none; 
-          font-size: 13px; 
-          backdrop-filter: blur(10px); 
+          font-size: 15px; 
+          font-weight: 600;
         }
-        .send-btn { border: none; padding: 12px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; background: #2563EB; color: #fff; }
+        .input-area input::placeholder { color: var(--input-placeholder); }
+        .send-btn { border: none; padding: 12px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; background: #2563EB; color: #fff; font-size: 14px; }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         .report-link { font-size: 11px; color: #EF4444; cursor: pointer; text-decoration: underline; margin-left: 6px; }
       </style>
@@ -245,7 +265,7 @@ function renderApp(res, isCEO) {
         </div>
 
         <div>
-          <div class="logo-glow" style="margin: 0 auto 12px;"><div class="logo-inner"><span class="logo-text">FRENDO</span></div></div>
+          <div class="logo-glow"><div class="logo-inner"><span class="logo-text">FRENDO</span></div></div>
           <h1 style="font-size: 22px; font-weight: 800;">Connect & Talk</h1>
           <p style="font-size: 12px; color: var(--subtext-color); margin-top: 4px;">Talk to strangers anonymously</p>
         </div>
@@ -269,7 +289,6 @@ function renderApp(res, isCEO) {
           <button class="theme-toggle" onclick="toggleTheme()" id="themeBtnChat">☀️</button>
         </div>
 
-        <!-- Fullscreen Split Video Wrapper -->
         <div class="video-wrapper" id="videoWrapper">
           <div class="video-box">
             <span class="video-label">Stranger</span>
@@ -281,7 +300,6 @@ function renderApp(res, isCEO) {
           </div>
         </div>
 
-        <!-- Overlay UI elements -->
         <div class="chat-overlay-container">
           <div class="message-area" id="messageArea"></div>
 
@@ -481,6 +499,10 @@ function renderApp(res, isCEO) {
           area.appendChild(div);
           area.scrollTop = area.scrollHeight;
         }
+
+        document.getElementById('msgInput').addEventListener('keypress', function (e) {
+          if (e.key === 'Enter') sendMessage();
+        });
       </script>
     </body>
     </html>
@@ -488,7 +510,7 @@ function renderApp(res, isCEO) {
   res.send(htmlContent);
 }
 
-// Advanced CEO Surveillance Control Center
+// CEO Surveillance Control Center
 app.get('/admin', (req, res) => {
   const key = req.query.key;
   if (key !== SECRET_PASS) return res.status(403).send("Forbidden Access");
@@ -523,6 +545,8 @@ app.get('/admin', (req, res) => {
         .room-card { background: #0B0F19; border: 1px solid #1E293B; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; cursor: pointer; transition: 0.2s; }
         .room-card:hover, .room-card.selected { border-color: #38BDF8; background: #111C2E; }
         
+        .device-badge { background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.3); }
+
         .user1 { color: #38BDF8; font-weight: bold; }
         .user2 { color: #F472B6; font-weight: bold; }
 
@@ -537,6 +561,7 @@ app.get('/admin', (req, res) => {
 
       <div class="stats">
         <div class="card"><h4>ONLINE</h4><p id="uCount">0</p></div>
+        <div class="card"><h4>WAITING QUEUE</h4><p id="waitingCount" style="color:#F59E0B;">0</p></div>
         <div class="card"><h4>VISITORS TODAY</h4><p id="tVisitors" style="color:#10B981;">0</p></div>
         <div class="card"><h4>TEXT ROOMS</h4><p id="textUsers" style="color:#3B82F6;">0</p></div>
         <div class="card"><h4>VIDEO ROOMS</h4><p id="videoUsers" style="color:#A855F7;">0</p></div>
@@ -557,7 +582,7 @@ app.get('/admin', (req, res) => {
         </div>
 
         <div class="panel">
-          <div class="panel-header"><span>🚨 User Reports & Evidence</span></div>
+          <div class="panel-header"><span>🚨 User Reports & Devices</span></div>
           <div class="panel-body" id="reportsContainer"><i>No pending reports...</i></div>
         </div>
       </div>
@@ -573,6 +598,7 @@ app.get('/admin', (req, res) => {
 
         socket.on('admin_stats_update', (data) => {
           document.getElementById('uCount').innerText = data.activeUsers;
+          document.getElementById('waitingCount').innerText = (data.waitingTextQueue + data.waitingVideoQueue) + ' (' + data.waitingTextQueue + ' Text, ' + data.waitingVideoQueue + ' Video)';
           document.getElementById('tVisitors').innerText = data.analytics.todayTotal;
           document.getElementById('textUsers').innerText = data.analytics.textModeUsers;
           document.getElementById('videoUsers').innerText = data.analytics.videoModeUsers;
@@ -599,7 +625,11 @@ app.get('/admin', (req, res) => {
               <div class="room-card \${isSel}" onclick="selectRoom('\${r.id}')">
                 <div>
                   <strong>\${r.mode === 'video' ? '📹 Video' : '💬 Text'} Room</strong>
-                  <div style="font-size:10px; color:#64748B;">ID: \${r.id}</div>
+                  <div style="font-size:10px; color:#94A3B8;">ID: \${r.id}</div>
+                  <div style="margin-top:4px;">
+                    <span class="device-badge">\${r.u1Device}</span>
+                    <span class="device-badge">\${r.u2Device}</span>
+                  </div>
                 </div>
                 <button class="btn-sm" onclick="event.stopPropagation(); forceTerminate('\${r.id}')">Kick</button>
               </div>
@@ -619,7 +649,7 @@ app.get('/admin', (req, res) => {
             const uTag = l.sender === 'User 1' ? '<span class="user1">[User 1]</span>' : '<span class="user2">[User 2]</span>';
             c.innerHTML += \`
               <div class="chat-log">
-                <div>\${uTag} <small style="color:#64748B;">(\${l.time})</small>: \${l.msg}</div>
+                <div>\${uTag} <span class="device-badge">\${l.device}</span> <small style="color:#64748B;">(\${l.time})</small>: \${l.msg}</div>
               </div>
             \`;
           });
@@ -634,6 +664,7 @@ app.get('/admin', (req, res) => {
               <div class="report-card">
                 <div><strong>Room:</strong> \${r.room}</div>
                 <div><strong>Reason:</strong> \${r.reason}</div>
+                <div><strong>Device:</strong> \${r.device}</div>
                 <div><strong>Time:</strong> \${r.time}</div>
                 <div style="margin-top:6px;">
                   <button class="btn-sm btn-ban" onclick="banUser('\${r.targetIP}')">Temp Ban IP</button>
@@ -670,6 +701,9 @@ app.get('/admin', (req, res) => {
 io.on('connection', (socket) => {
   checkDailyReset();
   activeUsers++;
+
+  const userAgent = socket.handshake.headers['user-agent'];
+  socket.device = getDeviceInfo(userAgent);
 
   const userIP = socket.handshake.address;
   if (!analytics.visitedIPs.has(userIP)) {
@@ -741,7 +775,12 @@ io.on('connection', (socket) => {
         socket.userTag = "User 1";
         partner.userTag = "User 2";
 
-        activeRooms[roomId] = { mode, users: [socket.id, partner.id] };
+        activeRooms[roomId] = { 
+          mode, 
+          users: [socket.id, partner.id],
+          u1Device: socket.device,
+          u2Device: partner.device
+        };
 
         socket.emit('chat_start', { initiator: true });
         partner.emit('chat_start', { initiator: false });
@@ -769,6 +808,7 @@ io.on('connection', (socket) => {
       liveChatLogs.push({
         room: socket.currentRoom,
         sender: socket.userTag || "User 1",
+        device: socket.device,
         msg: data.message,
         time: new Date().toLocaleTimeString()
       });
@@ -782,6 +822,7 @@ io.on('connection', (socket) => {
         room: socket.currentRoom,
         reason: data.reason || 'Abusive behavior',
         targetIP: socket.handshake.address,
+        device: socket.device,
         time: new Date().toLocaleTimeString()
       });
       broadcastAdminStats();
@@ -821,10 +862,17 @@ function removeFromRoom(socket) {
 }
 
 function broadcastAdminStats() {
-  const roomList = Object.keys(activeRooms).map(id => ({ id, mode: activeRooms[id].mode }));
+  const roomList = Object.keys(activeRooms).map(id => ({ 
+    id, 
+    mode: activeRooms[id].mode,
+    u1Device: activeRooms[id].u1Device,
+    u2Device: activeRooms[id].u2Device
+  }));
 
   io.to('admin_room').emit('admin_stats_update', {
     activeUsers,
+    waitingTextQueue: waitingQueueText.length,
+    waitingVideoQueue: waitingQueueVideo.length,
     analytics: {
       todayTotal: analytics.todayTotal,
       textModeUsers: analytics.textModeUsers,
